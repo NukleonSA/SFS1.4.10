@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Solar Panel
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: '光伏板'
+  description: /一种太阳能电池板,/当伸展时会发电./
+  prefab: {fileID: 4977153420339851, guid: 5f957f4f7ca54994db22328927983a7b, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 0.225, y: -0.95, z: 0.225}
+    - {x: 0.225, y: 0.95, z: 0.225}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 0, y: 2}
+    start: {x: 0, y: -1}
+    fuelFlow: 0
+  switchPoints: []
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: -1
+    point: 1
+    angleDeg: 0
+    angleRad: 0
+    size: 1
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 0.25, y: 0}
+  depth: 0
+  pickGridScale: 0.5
+  flip2stickX: 1
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []

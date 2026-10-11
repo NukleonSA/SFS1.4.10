@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Landing Leg
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: 着陆腿
+  description: '/一条可伸缩的腿用于在月球和行星的表面着陆.'
+  prefab: {fileID: 4061268324235159, guid: 7d5547e2b1959a247b9126588f01ad23, type: 3}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 0.25, y: 0, z: 0.2}
+    - {x: 0.25, y: 2.3, z: 0.2}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName: 
+    size: {x: 0, y: 0.5}
+    start: {x: 0, y: 0}
+    fuelFlow: 0
+  switchPoints: []
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: -1
+    point: 1
+    angleDeg: 0
+    angleRad: 0
+    size: 0.2
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 0.25, y: 1.15}
+  depth: 0
+  pickGridScale: 0.4
+  flip2stickX: 1
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []

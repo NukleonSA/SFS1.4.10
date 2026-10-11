@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Cone
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: 空气动力学鼻锥
+  description: '/空气动力学鼻锥，用于/改善侧助推器的空气动/力学.'
+  prefab: {fileID: 4724804207875695, guid: 2310feeeef8bbdf4a8c5743885cf6f6f, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 1, y: 0, z: 1}
+    - {x: 1, y: 0.08, z: 1}
+    - {x: 1, y: 1.95, z: 0.3}
+    - {x: 1, y: 2.21, z: 0.12}
+    - {x: 1, y: 2.26, z: 0.04}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 2, y: 0}
+    start: {x: 0, y: 0}
+    fuelFlow: 0
+  switchPoints:
+  - switchName:
+    position: {x: 1, y: 0}
+    type: 4 wide
+    trigger: 1
+    magnet: 1
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: 0
+    point: 0
+    angleDeg: 0
+    angleRad: 3.1415927
+    size: 1.5
+  - surfaceId: -1
+    point: 0
+    angleDeg: 65
+    angleRad: 1.134464
+    size: 0.6
+  - surfaceId: -1
+    point: 0
+    angleDeg: -65
+    angleRad: -1.134464
+    size: 0.6
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 1, y: 1.14}
+  depth: 0
+  pickGridScale: 0.4
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []

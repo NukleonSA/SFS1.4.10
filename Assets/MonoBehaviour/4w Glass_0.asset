@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3120bff566419a73866c47d0b2ce1574, type: 3}
+  m_Name: 4w Glass_0
+  m_EditorClassIdentifier: 
+  texture: {fileID: 21300000, guid: eae64f1dfd0a98745b910d35804d33e6, type: 2}
+  shading: {fileID: 21300000, guid: 6858639406bfa774f85338d4dc746fdb, type: 2}
+  icon: {fileID: 21300000, guid: 6cecd29c5d33451478e31c5ee3be47a3, type: 2}
+  color: {r: 1, g: 1, b: 1, a: 0.4}
+  scale: 0.4
+  tileScale: 1
+  drawMode: 3

@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: Aero (Full)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 375, y: 623, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5f58eeeae21659fe41e1383ed351681, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  categoryName: 空气动力
+  parts:
+  - {fileID: 11400000, guid: b038aedf07a13934382aa35a20301f18, type: 2}
+  - {fileID: 11400000, guid: e6272fe257d78bc4e9f1ead60806b956, type: 2}
+  - {fileID: 11400000, guid: d147b6243b47dfa409173c9897536cdb, type: 2}
+  - {fileID: 11400000, guid: 4d183bcc56796ba41a08443986cf4340, type: 2}
+  - {fileID: 11400000, guid: 088ac6b41b690dc479aeed87bcb39427, type: 2}
+  - {fileID: 11400000, guid: b1c44a08b0d624d4d8ee0bae85187ae0, type: 2}
+  - {fileID: 11400000, guid: 9b243861184fb3a40afc924c67be1c87, type: 2}
+  - {fileID: 11400000, guid: c97f24177d766d442b09ba5a9b7b1c30, type: 2}
+  - {fileID: 11400000, guid: bfa5679d6d5b2f74f976fdf2b952ce6a, type: 2}
+  - {fileID: 11400000, guid: 4ba2a34a93cb9bb429f68aa0d15fc888, type: 2}
+  - {fileID: 11400000, guid: 9da209405868112498f871e04af1f7cb, type: 2}
+  - {fileID: 11400000, guid: 0441c3aeebc56504b9e01051f55ee62f, type: 2}
+--- !u!1001 &100100000
+Prefab:
+  serializedVersion: 2
+  m_ObjectHideFlags: 1
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications: []
+    m_RemovedComponents: []
+  m_ParentPrefab: {fileID: 0}
+  m_RootGameObject: {fileID: 1709254077376921}
+  m_IsPrefabParent: 1

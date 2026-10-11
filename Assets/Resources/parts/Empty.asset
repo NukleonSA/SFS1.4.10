@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Empty
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: Empty Placeholder Part
+  description: Empty Placeholder Part
+  prefab: {fileID: 4724804207875695, guid: dd864716870d74f46b33d4e7b11adcf7, type: 2}
+  breakVelocity: 5
+  hitbox: []
+  attachmentSurfaces: []
+  switchPoints: []
+  dragMultiplier: 1
+  dragSurfaces: []
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 1, y: 1}
+  depth: 0
+  pickGridScale: 2
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 0}
+  inFull: 0
+  oldName: []

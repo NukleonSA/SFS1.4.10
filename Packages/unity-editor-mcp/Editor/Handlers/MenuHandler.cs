@@ -1,0 +1,319 @@
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using UnityEditor;
+using UnityEngine;
+using UnityEditorMCP.Core;
+
+namespace UnityEditorMCP.Handlers
+{
+    /// <summary>
+    /// Handles Unity Editor menu item execution commands
+    /// </summary>
+    public static class MenuHandler
+    {
+        // Blacklist of dangerous menu items for safety
+        // Includes dialog-opening menus that cause MCP hanging
+        private static readonly HashSet<string> BlacklistedMenus = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Application control — macOS uses "File/Quit"; Windows/Linux use "File/Exit". Block BOTH so the editor
+            // can't be terminated on the DECLARED-SUPPORTED platforms (the floor matrix runs Windows + Linux). (Bug hunt.)
+            "File/Quit",
+            "File/Exit",
+
+            // Dialog-opening file operations (cause MCP hanging)
+            "File/Open Scene",
+            "File/New Scene",
+            "File/Save Scene As...",
+            "File/Build Settings...",
+            "File/Build And Run",
+            
+            // Dialog-opening asset operations (cause MCP hanging)
+            "Assets/Import New Asset...",
+            "Assets/Import Package/Custom Package...",
+            "Assets/Export Package...",
+            "Assets/Delete",
+            
+            // Dialog-opening preferences and settings (cause MCP hanging)
+            "Edit/Preferences...",
+            "Edit/Project Settings...",
+            
+            // Dialog-opening window operations (may cause issues)
+            "Window/Package Manager",
+            "Window/Asset Store",
+            
+            // Scene view operations that may require focus (potential hanging)
+            "GameObject/Align With View",
+            "GameObject/Align View to Selected"
+        };
+
+        /// <summary>
+        /// Executes a Unity Editor menu item
+        /// </summary>
+        /// <param name="parameters">Command parameters</param>
+        /// <returns>Execution result</returns>
+        public static HandlerOutcome ExecuteMenuItem(JObject parameters)
+        {
+            try
+            {
+                // Extract parameters
+                string action = parameters["action"]?.ToString()?.ToLower() ?? "execute";
+                string menuPath = parameters["menuPath"]?.ToString();
+                string alias = parameters["alias"]?.ToString();
+                bool safetyCheck = parameters["safetyCheck"]?.ToObject<bool>() ?? true;
+                JObject menuParameters = parameters["parameters"] as JObject;
+
+                // Validate menu path
+                if (string.IsNullOrWhiteSpace(menuPath))
+                {
+                    return HandlerOutcome.Fail("menuPath is required", "VALIDATION_ERROR");
+                }
+
+                // Handle different actions
+                switch (action)
+                {
+                    case "execute":
+                        return ExecuteMenuAction(menuPath, alias, safetyCheck, menuParameters);
+
+                    case "get_available_menus":
+                        return GetAvailableMenus(menuParameters);
+
+                    default:
+                        return HandlerOutcome.Fail($"Unknown action: {action}. Valid actions are 'execute', 'get_available_menus'", "VALIDATION_ERROR");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MenuHandler] Error executing menu operation: {ex}");
+                return HandlerOutcome.Fail($"Menu operation failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Executes a specific menu item
+        /// </summary>
+        private static HandlerOutcome ExecuteMenuAction(string menuPath, string alias, bool safetyCheck, JObject parameters)
+        {
+            try
+            {
+                // Validate menu path format
+                if (!menuPath.Contains("/") || menuPath.StartsWith("/") || menuPath.EndsWith("/"))
+                {
+                    return HandlerOutcome.Fail("menuPath must be in format \"Category/MenuItem\" (e.g., \"Assets/Refresh\")", "VALIDATION_ERROR");
+                }
+
+                // Blacklisted menus (editor shutdown, build, dialogs that hang MCP) are
+                // NEVER executable — the guard is unconditional and cannot be bypassed by
+                // a client-supplied flag. (safetyCheck is retained for wire compatibility
+                // but no longer disables this check.)
+                if (BlacklistedMenus.Contains(menuPath))
+                {
+                    return HandlerOutcome.Fail($"Menu item is blacklisted for safety and cannot be executed: {menuPath}", "INVALID_STATE");
+                }
+
+                // Record execution start time
+                var startTime = DateTime.UtcNow;
+
+                // Execute the menu item
+                bool executed = false;
+                bool menuExists = true;
+
+                try
+                {
+                    // Try to execute the menu item
+                    executed = EditorApplication.ExecuteMenuItem(menuPath);
+
+                    if (!executed)
+                    {
+                        // Menu item exists but couldn't be executed (might be disabled or context-dependent)
+                        Debug.LogWarning($"[MenuHandler] Menu item '{menuPath}' could not be executed - it may be disabled or context-dependent");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Menu item might not exist
+                    Debug.LogWarning($"[MenuHandler] Failed to execute menu item '{menuPath}': {ex.Message}");
+                    menuExists = false;
+                    executed = false;
+                }
+
+                // Calculate execution time
+                var executionTime = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                // F1: don't report success when the menu did NOT run (was success:true with executed:false).
+                if (!executed)
+                    return HandlerOutcome.Fail(
+                        menuExists ? "Menu item found but could not be executed (may be disabled or context-dependent)"
+                                   : "Menu item not found or execution failed",
+                        menuExists ? "INVALID_STATE" : "NOT_FOUND");
+
+                // Build response
+                var result = new
+                {
+                    success = true,
+                    menuPath = menuPath,
+                    executed = executed,
+                    menuExists = menuExists,
+                    executionTime = executionTime,
+                    message = executed
+                        ? "Menu item executed successfully"
+                        : menuExists
+                            ? "Menu item found but could not be executed (may be disabled or context-dependent)"
+                            : "Menu item not found or execution failed"
+                };
+
+                // Add alias if provided
+                if (!string.IsNullOrEmpty(alias))
+                {
+                    return HandlerOutcome.Ok(new
+                    {
+                        result.success,
+                        result.menuPath,
+                        result.executed,
+                        result.menuExists,
+                        result.executionTime,
+                        result.message,
+                        alias = alias
+                    });
+                }
+
+                return HandlerOutcome.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MenuHandler] Error executing menu item '{menuPath}': {ex}");
+                return HandlerOutcome.Fail($"Menu item execution failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets available Unity Editor menu items
+        /// Note: This is a placeholder implementation as Unity doesn't provide a direct API
+        /// to enumerate all menu items. A full implementation would require reflection
+        /// or maintaining a predefined list of known menu items.
+        /// </summary>
+        private static HandlerOutcome GetAvailableMenus(JObject parameters)
+        {
+            // Common Unity menu items (partial list for demonstration)
+            var commonMenus = new List<string>
+            {
+                // File menu
+                "File/New Scene",
+                "File/Open Scene",
+                "File/Save",
+                "File/Save As...",
+                "File/Save Project",
+                
+                // Edit menu
+                "Edit/Undo",
+                "Edit/Redo",
+                "Edit/Cut",
+                "Edit/Copy",
+                "Edit/Paste",
+                "Edit/Select All",
+                
+                // Assets menu
+                "Assets/Create/Folder",
+                "Assets/Create/C# Script",
+                "Assets/Create/Material",
+                "Assets/Refresh",
+                "Assets/Reimport All",
+                
+                // GameObject menu
+                "GameObject/Create Empty",
+                "GameObject/3D Object/Cube",
+                "GameObject/3D Object/Sphere",
+                "GameObject/3D Object/Cylinder",
+                "GameObject/3D Object/Plane",
+                "GameObject/Light/Directional Light",
+                "GameObject/Audio/Audio Source",
+                "GameObject/Camera",
+                
+                // Window menu
+                "Window/General/Console",
+                "Window/General/Project",
+                "Window/General/Hierarchy",
+                "Window/General/Inspector",
+                "Window/General/Scene",
+                "Window/General/Game",
+                "Window/Animation/Animation",
+                "Window/Animation/Animator"
+            };
+
+            // Don't advertise blacklisted menus as available — ExecuteMenuAction refuses
+            // them unconditionally, so listing them as executable is misleading.
+            commonMenus.RemoveAll(m => BlacklistedMenus.Contains(m));
+
+            // Filter by pattern if provided
+            var filter = parameters?["filter"]?.ToString();
+            var filteredMenus = commonMenus;
+
+            if (!string.IsNullOrEmpty(filter))
+            {
+                filteredMenus = new List<string>();
+                foreach (var menu in commonMenus)
+                {
+                    if (menu.Contains(filter) || 
+                        (filter.EndsWith("*") && menu.StartsWith(filter.TrimEnd('*'))))
+                    {
+                        filteredMenus.Add(menu);
+                    }
+                }
+            }
+
+            return HandlerOutcome.Ok(new
+            {
+                success = true,
+                availableMenus = filteredMenus,
+                totalMenus = commonMenus.Count,
+                filteredCount = filteredMenus.Count,
+                message = filter != null
+                    ? $"Filtered menus retrieved successfully (filter: {filter})"
+                    : "Available menus retrieved successfully",
+                note = "This is a partial list of common Unity menu items. Unity doesn't provide a direct API to enumerate all menu items."
+            });
+        }
+
+        /// <summary>
+        /// Gets the list of blacklisted menu items
+        /// </summary>
+        /// <returns>Array of blacklisted menu paths</returns>
+        public static string[] GetBlacklistedMenus()
+        {
+            var result = new string[BlacklistedMenus.Count];
+            BlacklistedMenus.CopyTo(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Adds a menu item to the blacklist
+        /// </summary>
+        /// <param name="menuPath">Menu path to blacklist</param>
+        public static void AddToBlacklist(string menuPath)
+        {
+            if (!string.IsNullOrEmpty(menuPath))
+            {
+                BlacklistedMenus.Add(menuPath);
+                Debug.Log($"[MenuHandler] Added '{menuPath}' to blacklist");
+            }
+        }
+
+        /// <summary>
+        /// Removes a menu item from the blacklist
+        /// </summary>
+        /// <param name="menuPath">Menu path to remove from blacklist</param>
+        public static bool RemoveFromBlacklist(string menuPath)
+        {
+            if (!string.IsNullOrEmpty(menuPath))
+            {
+                bool removed = BlacklistedMenus.Remove(menuPath);
+                if (removed)
+                {
+                    Debug.Log($"[MenuHandler] Removed '{menuPath}' from blacklist");
+                }
+                return removed;
+            }
+            return false;
+        }
+    }
+}

@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Battery 4x1
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: 电池
+  description: /这是用来储存电能的电池。/
+  prefab: {fileID: 4099118695303065, guid: b24e92cc9eb656f4f96fe095261c8398, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 0, y: 0, z: 1}
+    - {x: 0, y: 0.5, z: 1}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 0, y: 0.5}
+    start: {x: -1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 0, y: 0.5}
+    start: {x: 1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 2, y: 0}
+    start: {x: -1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 2, y: 0}
+    start: {x: -1, y: 0.5}
+    fuelFlow: 0
+  switchPoints:
+  - switchName:
+    position: {x: 0, y: 0}
+    type: None
+    trigger: 0
+    magnet: 0
+  - switchName:
+    position: {x: 0, y: 0.5}
+    type: None
+    trigger: 0
+    magnet: 0
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: 0
+    point: 0
+    angleDeg: 0
+    angleRad: 1.5707964
+    size: 0.5
+  - surfaceId: 1
+    point: 0
+    angleDeg: 0
+    angleRad: 4.712389
+    size: 0.5
+  - surfaceId: 2
+    point: 0
+    angleDeg: 0
+    angleRad: 3.1415927
+    size: 2
+  - surfaceId: 3
+    point: 0
+    angleDeg: 0
+    angleRad: 0
+    size: 2
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 0, y: 0.25}
+  depth: 0
+  pickGridScale: 0.45
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []

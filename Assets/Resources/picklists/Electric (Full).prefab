@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: Electric (Full)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 375, y: 623, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5f58eeeae21659fe41e1383ed351681, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  categoryName: '电 动 '
+  parts:
+  - {fileID: 11400000, guid: 11ede8534f44d4145bff28d36e6e5caa, type: 2}
+  - {fileID: 11400000, guid: 2665972928c68be428ac79dfef95a8cd, type: 2}
+  - {fileID: 11400000, guid: bbe20ccc29ff709499be5105351d63b3, type: 2}
+  - {fileID: 11400000, guid: 652f1e3bd15bb5144afee553d57fd10a, type: 2}
+  - {fileID: 11400000, guid: ae10f325e87dd6248beda7434a236c98, type: 2}
+  - {fileID: 11400000, guid: 0982b29312ffa2441b6623a3a607e726, type: 2}
+  - {fileID: 11400000, guid: eb447481c97585a4a980cb1355858ed9, type: 2}
+  - {fileID: 11400000, guid: fe3c681276afa3648b349daa13029d0a, type: 2}
+  - {fileID: 11400000, guid: 31c426fd4ed5fc54683613a266d63abd, type: 2}
+  - {fileID: 11400000, guid: 0a87f5d866828a248a66d93bc4070322, type: 2}
+  - {fileID: 11400000, guid: 3caf12863705d03498649cf743c99160, type: 2}
+--- !u!1001 &100100000
+Prefab:
+  serializedVersion: 2
+  m_ObjectHideFlags: 1
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications: []
+    m_RemovedComponents: []
+  m_ParentPrefab: {fileID: 0}
+  m_RootGameObject: {fileID: 1709254077376921}
+  m_IsPrefabParent: 1

@@ -1,0 +1,134 @@
+using NUnit.Framework;
+using Newtonsoft.Json.Linq;
+using UnityEditorMCP.Handlers;
+
+namespace UnityEditorMCP.Tests
+{
+    /// <summary>
+    /// Editor-side path-traversal guards added in v0.5.0 (the audit found create_script -> arbitrary
+    /// file WRITE and analyze_screenshot -> arbitrary file READ via `Assets/../..`). Defense-in-depth:
+    /// the Node layer rejects these at the input edge, but a DIRECT TCP caller bypasses Node, so the C#
+    /// handlers must reject them too — which is exactly what these tests pin.
+    /// </summary>
+    public class HandlerSecurityTests
+    {
+        [Test]
+        public void CreateScript_WithDotDotTraversal_IsRejected()
+        {
+            var outcome = ScriptHandler.CreateScript(new JObject
+            {
+                ["scriptName"] = "TraversalProbe",
+                ["path"] = "Assets/../../__traversal_probe"
+            });
+            Assert.IsTrue(outcome.IsError, "a traversal path must be rejected");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+
+        [Test]
+        public void CreateScript_WithBackslashTraversal_IsRejected()
+        {
+            var outcome = ScriptHandler.CreateScript(new JObject
+            {
+                ["scriptName"] = "TraversalProbe",
+                ["path"] = "Assets/..\\..\\probe"
+            });
+            Assert.IsTrue(outcome.IsError);
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+        }
+
+#if UNITY_EDITOR_WIN
+        // Windows-only vector: "Assets/C:/..." passes StartsWith("Assets/"), then Path.Combine treats the
+        // drive-rooted "C:/..." as absolute and discards dataPath — the resolved-path PathSafety gate blocks it.
+        // On POSIX there is no drive concept and NormalizePath trims a leading '/', so the same input resolves
+        // to a benign in-project subfolder (correctly allowed) — there is no absolute bypass to reject there.
+        // (Round-4 audit; the floor-CI Linux run surfaced the platform difference.)
+        [Test]
+        public void CreateScript_WithAbsolutePathBypass_IsRejected()
+        {
+            var outcome = ScriptHandler.CreateScript(new JObject
+            {
+                ["scriptName"] = "Probe",
+                ["path"] = "Assets/C:/Windows/System32/"
+            });
+            Assert.IsTrue(outcome.IsError, "an absolute-path bypass must be rejected");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+#endif
+
+        [Test]
+        public void AnalyzeScreenshot_WithTraversalImagePath_IsRejected()
+        {
+            var outcome = ScreenshotHandler.AnalyzeScreenshot(new JObject
+            {
+                ["imagePath"] = "Assets/../../secret.png",
+                ["analysisType"] = "basic"
+            });
+            Assert.IsTrue(outcome.IsError, "a traversal imagePath must be rejected");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+
+        // The sibling script handlers + capture_screenshot were unguarded until the confirmation audit;
+        // these are reachable with NO Node-side handler (pure passthrough via call_unity_tool), so the
+        // C# guard is the sole defense.
+
+        [Test]
+        public void ReadScript_WithTraversalPath_IsRejected()
+        {
+            var outcome = ScriptHandler.ReadScript(new JObject { ["scriptPath"] = "Assets/../../secret.txt" });
+            Assert.IsTrue(outcome.IsError, "a traversal scriptPath must be rejected (arbitrary file READ)");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("Assets", outcome.Error);
+        }
+
+        [Test]
+        public void UpdateScript_WithTraversalPath_IsRejected()
+        {
+            var outcome = ScriptHandler.UpdateScript(new JObject { ["scriptPath"] = "Assets/../../evil.cs", ["scriptContent"] = "x" });
+            Assert.IsTrue(outcome.IsError, "a traversal scriptPath must be rejected (arbitrary file WRITE)");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("Assets", outcome.Error);
+        }
+
+        // The real new-dimensions fix: a WITHIN-project path OUTSIDE Assets/ (e.g. Packages/, .git/) must NOT be
+        // writable — the old whole-project IsWithinProject let a raw TCP client overwrite .git/config, .git/hooks,
+        // Packages/manifest.json, any existing project file. (Bug hunt: write-anywhere.)
+        [Test]
+        public void UpdateScript_WithinProjectButOutsideAssets_IsRejected()
+        {
+            var outcome = ScriptHandler.UpdateScript(new JObject { ["scriptPath"] = "Packages/manifest.json", ["scriptContent"] = "x" });
+            Assert.IsTrue(outcome.IsError, "a within-project write outside Assets/ must be rejected");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("Assets", outcome.Error);
+        }
+
+        [Test]
+        public void CaptureScreenshot_WithTraversalOutputPath_IsRejected()
+        {
+            var outcome = ScreenshotHandler.CaptureScreenshot(new JObject { ["outputPath"] = "../../evil.png" });
+            Assert.IsTrue(outcome.IsError, "a traversal outputPath must be rejected (write outside project)");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+
+        [Test]
+        public void CreateScene_WithTraversalPath_IsRejected()
+        {
+            var outcome = SceneHandler.CreateScene(new JObject { ["sceneName"] = "Probe", ["path"] = "Assets/../../evil/" });
+            Assert.IsTrue(outcome.IsError, "a traversal scene path must be rejected (write scene outside project)");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+
+        [Test]
+        public void LoadScene_WithTraversalPath_IsRejected()
+        {
+            var outcome = SceneHandler.LoadScene(new JObject { ["scenePath"] = "Assets/../../secrets.unity" });
+            Assert.IsTrue(outcome.IsError, "a traversal scenePath must be rejected (open scene outside project)");
+            Assert.AreEqual("VALIDATION_ERROR", outcome.Code);
+            StringAssert.Contains("project root", outcome.Error);
+        }
+    }
+}

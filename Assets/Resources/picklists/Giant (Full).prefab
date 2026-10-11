@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: Giant (Full)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 375, y: 623, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5f58eeeae21659fe41e1383ed351681, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  categoryName: 巨型零件
+  parts:
+  - {fileID: 11400000, guid: 6817ca41f85f6d645935476794ce10e2, type: 2}
+  - {fileID: 11400000, guid: 1f0b7123e3e40a44bbea119bd44be9ee, type: 2}
+  - {fileID: 11400000, guid: d03b38d4216dbc64e9052e92562781df, type: 2}
+  - {fileID: 11400000, guid: 6f32e7f4ff23b7441ba3a79f991da551, type: 2}
+  - {fileID: 11400000, guid: 46f992511decb6049aedaf6eaf276abf, type: 2}
+  - {fileID: 11400000, guid: 2efa879c7f1140641a3ab153e047250b, type: 2}
+  - {fileID: 11400000, guid: d343e8d27b4a68442863c39b141b3497, type: 2}
+  - {fileID: 11400000, guid: 6b498e3922503b54d94c26cf06825527, type: 2}
+  - {fileID: 11400000, guid: 949e4dce164989b46b5f439e3790bbb0, type: 2}
+  - {fileID: 11400000, guid: 4e7fe7b64231c5a40945a3532931b5be, type: 2}
+--- !u!1001 &100100000
+Prefab:
+  serializedVersion: 2
+  m_ObjectHideFlags: 1
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications: []
+    m_RemovedComponents: []
+  m_ParentPrefab: {fileID: 0}
+  m_RootGameObject: {fileID: 1709254077376921}
+  m_IsPrefabParent: 1

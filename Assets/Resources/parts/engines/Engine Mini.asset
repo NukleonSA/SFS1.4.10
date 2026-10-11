@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Engine Mini
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: '蝗虫L.F.发动机'
+  description: /用于着陆器或小型平台的小发动机./
+  prefab: {fileID: 4587397909062814, guid: 86776bbc8352201479fdfc359d3a0aac, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 1, y: 0, z: 0.5}
+    - {x: 1, y: -0.8, z: 0.3}
+    - {x: 1, y: -1.5, z: 0.4}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 1, y: 0}
+    start: {x: 0.5, y: 0}
+    fuelFlow: 1
+  - switchName: nozzleSurface
+    size: {x: 0.8, y: 0}
+    start: {x: 0.6, y: -1.5}
+    fuelFlow: 0
+  switchPoints:
+  - switchName: topSwitch
+    position: {x: 1, y: 0}
+    type: 4 wide
+    trigger: 0
+    magnet: 0
+  - switchName:
+    position: {x: 1, y: -1.5}
+    type: Engine Bottom
+    trigger: 1
+    magnet: 0
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: 0
+    point: 0
+    angleDeg: 0
+    angleRad: 0
+    size: 2
+  - surfaceId: 1
+    point: 0
+    angleDeg: 0
+    angleRad: 3.1415927
+    size: 2
+  - surfaceId: -1
+    point: 0
+    angleDeg: 75
+    angleRad: 1.3089969
+    size: 0.75
+  - surfaceId: -1
+    point: 0
+    angleDeg: -75
+    angleRad: -1.3089969
+    size: 0.75
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs:
+    - code: nozzleSurface && build
+      type: 0
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: topSwitch || pick
+      type: 0
+      setType: 0
+      path: 01000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: 'topSwitch || pick? 0.5 : 0'
+      type: 6
+      setType: 0
+      path: 0200000000000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 1, y: -0.75}
+  depth: 0
+  pickGridScale: 0.45
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []

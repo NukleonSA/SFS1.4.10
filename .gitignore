@@ -1,0 +1,57 @@
+# ===== Unity 自动生成目录（体积巨大且可再生，绝不提交）=====
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+UIElementsSchema/
+
+# ===== IDE / 工程文件 =====
+.vs/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ===== 构建产物（体积大且可再生）=====
+*.apk
+*.aab
+*.ap_
+*.obb
+*.unitypackage
+*.app
+
+# ===== 崩溃 / 诊断 =====
+sysinfo.txt
+crashlytics-build.properties
+
+# ===== 大体积压缩包 =====
+*.zip
+*.7z
+*.rar
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 本项目额外排除 =====
+# Unity 默认新建工程的残留，与本工程无关
+/New Unity Project/
+# Monotype 商业字体（不可再分发）；思源黑体为 SIL OFL，保留
+/Assets/Font/ARIALBD.ttf
+/Assets/Font/ARIALBD.ttf.meta

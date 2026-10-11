@@ -1,0 +1,432 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEditor.Compilation;
+using UnityEngine;
+using Newtonsoft.Json.Linq;
+using UnityEditorMCP.Core;
+
+namespace UnityEditorMCP.Handlers
+{
+    /// <summary>
+    /// Handles compilation monitoring and error detection for Unity Editor MCP
+    /// </summary>
+    public static class CompilationHandler
+    {
+        private static List<CompilationMessage> lastCompilationMessages = new List<CompilationMessage>();
+        private static bool isMonitoring = false;
+        private static DateTime lastCompilationTime = DateTime.MinValue;
+
+        /// <summary>
+        /// Compilation message structure
+        /// </summary>
+        public class CompilationMessage
+        {
+            public string type;
+            public string message;
+            public string file;
+            public int line;
+            public int column;
+            public string timestamp;
+        }
+
+        /// <summary>
+        /// Start monitoring compilation events
+        /// </summary>
+        public static HandlerOutcome StartCompilationMonitoring(JObject parameters)
+        {
+            try
+            {
+                if (!isMonitoring)
+                {
+                    // Subscribe idempotently: CompilationPipeline events are editor-level
+                    // and survive domain reloads, but isMonitoring (a static field) resets
+                    // to false each reload — so a plain += would accumulate duplicate
+                    // subscriptions across recompiles. Remove-then-add is a no-op when not
+                    // subscribed and prevents the N-fold-callback leak.
+                    CompilationPipeline.compilationStarted -= OnCompilationStarted;
+                    CompilationPipeline.compilationStarted += OnCompilationStarted;
+                    CompilationPipeline.compilationFinished -= OnCompilationFinished;
+                    CompilationPipeline.compilationFinished += OnCompilationFinished;
+                    CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
+                    CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
+
+                    isMonitoring = true;
+                    Debug.Log("[CompilationHandler] Compilation monitoring started");
+                }
+
+                return HandlerOutcome.Ok(new
+                {
+                    success = true,
+                    isMonitoring = isMonitoring,
+                    message = "Compilation monitoring activated"
+                });
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[CompilationHandler] Error starting compilation monitoring: {e.Message}");
+                return HandlerOutcome.Fail($"Failed to start compilation monitoring: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Stop monitoring compilation events
+        /// </summary>
+        public static HandlerOutcome StopCompilationMonitoring(JObject parameters)
+        {
+            try
+            {
+                if (isMonitoring)
+                {
+                    // Unsubscribe from compilation events
+                    CompilationPipeline.compilationStarted -= OnCompilationStarted;
+                    CompilationPipeline.compilationFinished -= OnCompilationFinished;
+                    CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
+
+                    isMonitoring = false;
+                    Debug.Log("[CompilationHandler] Compilation monitoring stopped");
+                }
+
+                return HandlerOutcome.Ok(new
+                {
+                    success = true,
+                    isMonitoring = isMonitoring,
+                    message = "Compilation monitoring deactivated"
+                });
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[CompilationHandler] Error stopping compilation monitoring: {e.Message}");
+                return HandlerOutcome.Fail($"Failed to stop compilation monitoring: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get current compilation state and recent errors
+        /// </summary>
+        public static HandlerOutcome GetCompilationState(JObject parameters)
+        {
+            try
+            {
+                // Parse parameters
+                bool includeMessages = parameters["includeMessages"]?.ToObject<bool>() ?? true;
+                int maxMessages = parameters["maxMessages"]?.ToObject<int>() ?? 50;
+
+                // Get current compilation state
+                bool isCompiling = EditorApplication.isCompiling;
+                bool isUpdating = EditorApplication.isUpdating;
+
+                // Read compilation log file for recent errors
+                var compilationLogMessages = ReadCompilationLogFile();
+
+                // Combine with monitored messages
+                var allMessages = new List<CompilationMessage>();
+                allMessages.AddRange(lastCompilationMessages);
+                allMessages.AddRange(compilationLogMessages);
+
+                // Remove duplicates and sort by timestamp
+                var uniqueMessages = allMessages
+                    .GroupBy(m => $"{m.file}:{m.line}:{m.message}")
+                    .Select(g => g.First())
+                    .OrderByDescending(m => DateTime.Parse(m.timestamp))
+                    .Take(maxMessages)
+                    .ToList();
+
+                var result = new
+                {
+                    success = true,
+                    isCompiling = isCompiling,
+                    isUpdating = isUpdating,
+                    isMonitoring = isMonitoring,
+                    lastCompilationTime = lastCompilationTime.ToString("o"),
+                    messageCount = uniqueMessages.Count,
+                    errorCount = uniqueMessages.Count(m => m.type == "Error"),
+                    warningCount = uniqueMessages.Count(m => m.type == "Warning")
+                };
+
+                if (includeMessages)
+                {
+                    return HandlerOutcome.Ok(new
+                    {
+                        success = result.success,
+                        isCompiling = result.isCompiling,
+                        isUpdating = result.isUpdating,
+                        isMonitoring = result.isMonitoring,
+                        lastCompilationTime = result.lastCompilationTime,
+                        messageCount = result.messageCount,
+                        errorCount = result.errorCount,
+                        warningCount = result.warningCount,
+                        messages = uniqueMessages
+                    });
+                }
+
+                return HandlerOutcome.Ok(result);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[CompilationHandler] Error getting compilation state: {e.Message}");
+                return HandlerOutcome.Fail($"Failed to get compilation state: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Read Unity's compilation log file directly
+        /// </summary>
+        private static List<CompilationMessage> ReadCompilationLogFile()
+        {
+            var messages = new List<CompilationMessage>();
+            
+            try
+            {
+                // Unity stores compilation logs in different locations depending on version
+                var logPaths = new[]
+                {
+                    Path.Combine(Application.dataPath, "..", "Library", "LastBuild.buildreport"),
+                    Path.Combine(Application.dataPath, "..", "Library", "CompilationCompleted"),
+                    Path.Combine(Application.dataPath, "..", "Temp", "CompilationLog.txt"),
+                    // Editor log location (Mac)
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), 
+                                "Library/Logs/Unity/Editor.log"),
+                    // Editor log location (Windows)
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+                                "Unity/Editor/Editor.log")
+                };
+
+                foreach (var logPath in logPaths)
+                {
+                    if (File.Exists(logPath))
+                    {
+                        try
+                        {
+                            // Unity holds Editor.log open with an exclusive write lock on
+                            // Windows; File.ReadAllText (FileShare.None) always throws there.
+                            // Open shared read/write so the supplemental log read works.
+                            // TAIL-READ a bounded window: a long editor session's Editor.log reaches hundreds of MB,
+                            // and ReadToEnd() per get_compilation_state call was a multi-second MAIN-THREAD stall +
+                            // LOH churn. Recent compile errors live at the tail. (Bug hunt Core-6.)
+                            const int tailBytes = 256 * 1024;
+                            string logContent;
+                            using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                            {
+                                if (fs.Length > tailBytes) fs.Seek(-tailBytes, SeekOrigin.End);
+                                using (var sr = new StreamReader(fs))
+                                {
+                                    if (fs.Position > 0) sr.ReadLine(); // drop the partial line at the seek point
+                                    logContent = sr.ReadToEnd();
+                                }
+                            }
+                            var parsedMessages = ParseCompilationErrors(logContent, logPath);
+                            // Stamp with the LOG'S last-write time, not read-time Now — re-stamping stale errors as
+                            // current sorted long-fixed errors to the top as if fresh. (Core-6)
+                            var stamp = File.GetLastWriteTimeUtc(logPath).ToString("o");
+                            foreach (var m in parsedMessages) m.timestamp = stamp;
+                            messages.AddRange(parsedMessages);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"[CompilationHandler] Could not read log file {logPath}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[CompilationHandler] Error reading compilation logs: {ex.Message}");
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Parse compilation errors from log content
+        /// </summary>
+        private static List<CompilationMessage> ParseCompilationErrors(string logContent, string source)
+        {
+            var messages = new List<CompilationMessage>();
+            
+            // Regex patterns for different error formats
+            var patterns = new[]
+            {
+                // Standard C# compiler errors: Assets/Scripts/MyScript.cs(10,15): error CS0103: ...
+                @"(?<file>Assets[^(]+)\((?<line>\d+),(?<column>\d+)\):\s*(?<type>error|warning)\s+(?<code>\w+):\s*(?<message>.*)",
+                // Unity console format: Assets/Scripts/MyScript.cs:10:15: error CS0103: ...
+                @"(?<file>Assets[^:]+):(?<line>\d+):(?<column>\d+):\s*(?<type>error|warning)\s+(?<code>\w+):\s*(?<message>.*)",
+                // Alternative format without column: Assets/Scripts/MyScript.cs(10): error: ...
+                @"(?<file>Assets[^(]+)\((?<line>\d+)\):\s*(?<type>error|warning)[^:]*:\s*(?<message>.*)"
+            };
+
+            foreach (var pattern in patterns)
+            {
+                var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+                var matches = regex.Matches(logContent);
+
+                foreach (Match match in matches)
+                {
+                    if (match.Success)
+                    {
+                        var message = new CompilationMessage
+                        {
+                            type = CapitalizeFirst(match.Groups["type"].Value),
+                            message = match.Groups["message"].Value.Trim(),
+                            file = match.Groups["file"].Value,
+                            line = int.TryParse(match.Groups["line"].Value, out int line) ? line : 0,
+                            column = int.TryParse(match.Groups["column"].Value, out int col) ? col : 0,
+                            timestamp = DateTime.Now.ToString("o")
+                        };
+
+                        messages.Add(message);
+                    }
+                }
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Try to read Unity's internal console buffer
+        /// </summary>
+        private static List<CompilationMessage> ReadUnityConsoleBuffer()
+        {
+            var messages = new List<CompilationMessage>();
+            
+            try
+            {
+                // Use reflection to access Unity's console window entries
+                var consoleWindowType = typeof(EditorWindow).Assembly.GetType("UnityEditor.ConsoleWindow");
+                if (consoleWindowType != null)
+                {
+                    var getEntriesMethod = consoleWindowType.GetMethod("GetEntries", 
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                    
+                    if (getEntriesMethod != null)
+                    {
+                        // This is a simplified approach - Unity's internal API may vary
+                        Debug.Log("[CompilationHandler] Attempting to read console buffer");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[CompilationHandler] Could not access console buffer: {ex.Message}");
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Event handler for compilation started
+        /// </summary>
+        private static void OnCompilationStarted(object obj)
+        {
+            Debug.Log("[CompilationHandler] Compilation started");
+            lastCompilationMessages.Clear();
+        }
+
+        // Guards against stacking multiple delayCall captures across repeated compilations (audit #35).
+        private static bool captureScheduled;
+
+        /// <summary>
+        /// Event handler for compilation finished
+        /// </summary>
+        private static void OnCompilationFinished(object obj)
+        {
+            lastCompilationTime = DateTime.Now;
+            Debug.Log($"[CompilationHandler] Compilation finished at {lastCompilationTime:HH:mm:ss}");
+
+            // Schedule the post-compilation capture exactly once. A named method group (not an
+            // anonymous lambda) is removable, and the guard prevents stacking N copies of the
+            // capture onto delayCall across repeated compilations. (Audit #35.)
+            if (!captureScheduled)
+            {
+                captureScheduled = true;
+                EditorApplication.delayCall += CaptureCompilationResults;
+            }
+        }
+
+
+        /// <summary>
+        /// Event handler for assembly compilation finished
+        /// </summary>
+        private static void OnAssemblyCompilationFinished(string assemblyName, CompilerMessage[] messages)
+        {
+            Debug.Log($"[CompilationHandler] Assembly compilation finished: {assemblyName} ({messages.Length} messages)");
+            
+            // Convert CompilerMessage to our format
+            foreach (var msg in messages)
+            {
+                var compilationMessage = new CompilationMessage
+                {
+                    type = msg.type == CompilerMessageType.Error ? "Error" : "Warning",
+                    message = msg.message,
+                    file = msg.file,
+                    line = msg.line,
+                    column = msg.column,
+                    timestamp = DateTime.Now.ToString("o")
+                };
+                
+                lastCompilationMessages.Add(compilationMessage);
+            }
+        }
+
+        /// <summary>
+        /// Capture compilation results after compilation finishes
+        /// </summary>
+        private static void CaptureCompilationResults()
+        {
+            captureScheduled = false; // allow the next compilation to schedule a fresh capture
+            try
+            {
+                // Read fresh compilation logs
+                var logMessages = ReadCompilationLogFile();
+                
+                // Add to our collection without duplicates
+                foreach (var msg in logMessages)
+                {
+                    if (!lastCompilationMessages.Any(existing => 
+                        existing.file == msg.file && 
+                        existing.line == msg.line && 
+                        existing.message == msg.message))
+                    {
+                        lastCompilationMessages.Add(msg);
+                    }
+                }
+
+                Debug.Log($"[CompilationHandler] Captured {lastCompilationMessages.Count} compilation messages");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[CompilationHandler] Error capturing compilation results: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Helper method to capitalize first letter
+        /// </summary>
+        private static string CapitalizeFirst(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+            
+            return char.ToUpper(input[0]) + input.Substring(1).ToLower();
+        }
+
+        /// <summary>
+        /// Initialize compilation monitoring on domain reload
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void Initialize()
+        {
+            // Auto-start monitoring when Unity loads
+            EditorApplication.delayCall += () =>
+            {
+                if (!isMonitoring)
+                {
+                    StartCompilationMonitoring(new JObject());
+                }
+            };
+        }
+    }
+}

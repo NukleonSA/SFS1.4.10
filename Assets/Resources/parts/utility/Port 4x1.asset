@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Port 4x1
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: '超大对接端口'
+  description: /一种可用于将两辆车连接在一起的对接端口./
+  prefab: {fileID: 4044625135789424, guid: f25997f3c7aa5b44ea5954bc73c4779b, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 0, y: 0, z: 1}
+    - {x: 0, y: -0.5, z: 1}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 2, y: 0}
+    start: {x: -1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 2, y: 0}
+    start: {x: -1, y: -0.5}
+    fuelFlow: 0
+  switchPoints:
+  - switchName:
+    position: {x: 0, y: 0}
+    type: None
+    trigger: 0
+    magnet: 0
+  - switchName:
+    position: {x: 0, y: -0.5}
+    type: None
+    trigger: 0
+    magnet: 0
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: 0
+    point: 0
+    angleDeg: 0
+    angleRad: 0
+    size: 2
+  - surfaceId: 1
+    point: 0
+    angleDeg: 0
+    angleRad: 3.1415927
+    size: 2
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 0, y: -0.25}
+  depth: 0
+  pickGridScale: 0.45
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 0.75}
+  inFull: 1
+  oldName: []

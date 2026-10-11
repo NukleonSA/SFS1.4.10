@@ -1,0 +1,666 @@
+using System;
+using System.IO;
+using UnityEngine;
+using UnityEditor;
+using Newtonsoft.Json.Linq;
+using UnityEditorMCP.Core;
+
+namespace UnityEditorMCP.Handlers
+{
+    /// <summary>
+    /// Handles screenshot capture operations in Unity Editor
+    /// </summary>
+    public static class ScreenshotHandler
+    {
+        /// <summary>
+        /// Captures a screenshot from the Unity Editor
+        /// </summary>
+        public static HandlerOutcome CaptureScreenshot(JObject parameters)
+        {
+            try
+            {
+                // Parse parameters
+                string outputPath = parameters["outputPath"]?.ToString();
+                string captureMode = parameters["captureMode"]?.ToString() ?? "game"; // game, scene, or window
+                int width = parameters["width"]?.ToObject<int>() ?? 0;
+                int height = parameters["height"]?.ToObject<int>() ?? 0;
+                // Cap dimensions: an unbounded width/height flows into new RenderTexture/Texture2D and OOMs the editor.
+                // 16384 is the max texture dimension on virtually all GPUs. (Bug hunt: screenshot DoS.)
+                const int MaxDim = 16384;
+                if (width > MaxDim || height > MaxDim)
+                    return HandlerOutcome.Fail($"width/height must be <= {MaxDim}", "VALIDATION_ERROR");
+                bool includeUI = parameters["includeUI"]?.ToObject<bool>() ?? true;
+                string windowName = parameters["windowName"]?.ToString();
+                bool encodeAsBase64 = parameters["encodeAsBase64"]?.ToObject<bool>() ?? true; // default on -> the agent SEES the capture (G5)
+                string cameraName = parameters["cameraName"]?.ToString();
+                string cameraPath = parameters["cameraPath"]?.ToString();
+                int? cameraInstanceId = parameters["cameraInstanceId"]?.ToObject<int?>();
+                
+                // Validate capture mode
+                if (!IsValidCaptureMode(captureMode))
+                {
+                    return HandlerOutcome.Fail("Invalid capture mode. Must be 'game', 'scene', 'window', or 'camera'", "VALIDATION_ERROR");
+                }
+                
+                // Generate output path if not provided
+                if (string.IsNullOrEmpty(outputPath))
+                {
+                    string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                    outputPath = $"Assets/Screenshots/screenshot_{captureMode}_{timestamp}.png";
+                }
+
+                // Reject an out-of-project outputPath (a `..` would write the PNG outside the project).
+                // capture_screenshot has no Node-side handler, so this C# check is the sole guard.
+                if (!PathSafety.IsWithinProject(outputPath))
+                {
+                    return HandlerOutcome.Fail("outputPath must stay within the project root", "VALIDATION_ERROR");
+                }
+
+                // Restrict WRITES to under the Assets/ folder as .png so a caller can't overwrite the H5 audit log,
+                // ProjectSettings, Library, or a source .cs with PNG bytes. CANONICALIZE first (resolve absolute +
+                // collapse ..) and check the RESULT is under Application.dataPath — a literal StartsWith("assets/")
+                // both let "Assets/../Packages/x.png" ESCAPE and rejected a legit absolute in-project path. (Bug hunt capture gate.)
+                var dataPath = Application.dataPath.Replace('\\', '/').TrimEnd('/'); // <proj>/Assets
+                string absOut;
+                try
+                {
+                    absOut = Path.GetFullPath(Path.IsPathRooted(outputPath)
+                        ? outputPath
+                        : Path.Combine(Directory.GetParent(Application.dataPath).FullName, outputPath)).Replace('\\', '/');
+                }
+                catch { return HandlerOutcome.Fail("Invalid outputPath.", "VALIDATION_ERROR"); }
+                if (!(absOut.Equals(dataPath, StringComparison.OrdinalIgnoreCase) || absOut.StartsWith(dataPath + "/", StringComparison.OrdinalIgnoreCase)))
+                    return HandlerOutcome.Fail("outputPath must be under the Assets/ folder (screenshots are written as project assets).", "VALIDATION_ERROR");
+                if (!absOut.ToLowerInvariant().EndsWith(".png"))
+                    return HandlerOutcome.Fail("outputPath must end with .png", "VALIDATION_ERROR");
+
+                // Ensure directory exists
+                string directory = Path.GetDirectoryName(outputPath);
+                if (!AssetDatabase.IsValidFolder(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                    AssetDatabase.Refresh();
+                }
+                
+                // Capture based on mode
+                HandlerOutcome result = null;
+                switch (captureMode)
+                {
+                    case "game":
+                        result = CaptureGameView(outputPath, width, height, includeUI, encodeAsBase64);
+                        break;
+                    case "scene":
+                        result = CaptureSceneView(outputPath, width, height, encodeAsBase64);
+                        break;
+                    case "window":
+                        result = CaptureEditorWindow(outputPath, windowName, encodeAsBase64);
+                        break;
+                    case "camera":
+                        result = CaptureCamera(outputPath, width, height, encodeAsBase64, cameraName, cameraPath, cameraInstanceId);
+                        break;
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ScreenshotHandler] Error capturing screenshot: {ex.Message}");
+                return HandlerOutcome.Fail($"Failed to capture screenshot: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Captures the Game View
+        /// </summary>
+        private static HandlerOutcome CaptureGameView(string outputPath, int width, int height, bool includeUI, bool encodeAsBase64)
+        {
+            try
+            {
+                // Get the Game View
+                var gameViewType = typeof(Editor).Assembly.GetType("UnityEditor.GameView");
+                var gameView = EditorWindow.GetWindow(gameViewType, false);
+                
+                if (gameView == null)
+                {
+                    return HandlerOutcome.Fail("Game View not found. Please open the Game View window.", "NOT_FOUND");
+                }
+                
+                // Focus the Game View
+                gameView.Focus();
+                
+                // Get current resolution
+                var currentResolution = GetGameViewResolution();
+                
+                // Determine capture resolution
+                int captureWidth = width > 0 ? width : currentResolution.x;
+                int captureHeight = height > 0 ? height : currentResolution.y;
+                
+                // Capture the Game View SYNCHRONOUSLY into a texture. ScreenCapture.CaptureScreenshot
+                // writes its file after the next rendered frame, so the old code did Thread.Sleep(100)
+                // on the main thread to wait for it — freezing the whole editor on every screenshot.
+                // CaptureScreenshotAsTexture returns immediately, no file wait, no sleep. (Audit #30.)
+                Texture2D captured = ScreenCapture.CaptureScreenshotAsTexture();
+                if (captured == null)
+                {
+                    return HandlerOutcome.Fail("Game View capture produced no image — no rendering Game View is available (common when the editor is unfocused, in batch mode, or no Game View is open). Try captureMode 'camera' or 'scene'.", "INVALID_STATE");
+                }
+                try
+                {
+                    byte[] imageBytes = captured.EncodeToPNG();
+
+                    // Save to final location
+                    File.WriteAllBytes(outputPath, imageBytes);
+
+                    // Refresh asset database
+                    AssetDatabase.Refresh();
+
+                    var result = new
+                    {
+                        success = true,
+                        path = outputPath,
+                        // Report the ACTUAL captured resolution, not the requested width/height — CaptureScreenshotAsTexture
+                        // captures at the current view size and does not honor width/height. (Bug hunt Core-9.)
+                        width = captured.width,
+                        height = captured.height,
+                        requestedWidth = captureWidth,
+                        requestedHeight = captureHeight,
+                        captureMode = "game",
+                        includeUI = includeUI,
+                        fileSize = imageBytes.Length,
+                        message = "Game View screenshot captured successfully"
+                    };
+
+                    // Add base64 if requested
+                    if (encodeAsBase64)
+                    {
+                        return HandlerOutcome.Ok(new
+                        {
+                            result.success,
+                            result.path,
+                            result.width,
+                            result.height,
+                            result.captureMode,
+                            result.includeUI,
+                            result.fileSize,
+                            result.message,
+                            image = new { mimeType = "image/png", data = Convert.ToBase64String(imageBytes) }
+                        });
+                    }
+
+                    return HandlerOutcome.Ok(result);
+                }
+                finally
+                {
+                    if (captured != null) UnityEngine.Object.DestroyImmediate(captured);
+                }
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to capture Game View: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Captures the Scene View
+        /// </summary>
+        private static HandlerOutcome CaptureSceneView(string outputPath, int width, int height, bool encodeAsBase64)
+        {
+            try
+            {
+                // Get the Scene View
+                SceneView sceneView = SceneView.lastActiveSceneView;
+                if (sceneView == null)
+                {
+                    return HandlerOutcome.Fail("Scene View not found. Please open a Scene View window.", "NOT_FOUND");
+                }
+                
+                // Focus the Scene View
+                sceneView.Focus();
+                
+                // Get Scene View camera
+                Camera sceneCamera = sceneView.camera;
+                if (sceneCamera == null)
+                {
+                    return HandlerOutcome.Fail("Scene View camera not available", "NOT_FOUND");
+                }
+                
+                // Determine capture resolution
+                int captureWidth = width > 0 ? width : (int)sceneView.position.width;
+                int captureHeight = height > 0 ? height : (int)sceneView.position.height;
+                
+                // Create render texture
+                RenderTexture renderTexture = new RenderTexture(captureWidth, captureHeight, 24);
+                var prevActive = RenderTexture.active;
+                Texture2D screenshot = null;
+                byte[] imageBytes;
+                try
+                {
+                    sceneCamera.targetTexture = renderTexture;
+                    sceneCamera.Render();
+                    RenderTexture.active = renderTexture;
+                    screenshot = new Texture2D(captureWidth, captureHeight, TextureFormat.RGB24, false);
+                    screenshot.ReadPixels(new Rect(0, 0, captureWidth, captureHeight), 0, 0);
+                    screenshot.Apply();
+                    imageBytes = screenshot.EncodeToPNG();
+                }
+                finally
+                {
+                    // ALWAYS restore the live Scene View camera and release the textures, even on exception — otherwise
+                    // the camera keeps rendering into a destroyed RT and the RT/Texture2D leak native memory. (Bug hunt.)
+                    sceneCamera.targetTexture = null;
+                    RenderTexture.active = prevActive;
+                    UnityEngine.Object.DestroyImmediate(renderTexture);
+                    if (screenshot != null) UnityEngine.Object.DestroyImmediate(screenshot);
+                }
+
+                // Save to file
+                File.WriteAllBytes(outputPath, imageBytes);
+                AssetDatabase.Refresh();
+                
+                var result = new
+                {
+                    success = true,
+                    path = outputPath,
+                    width = captureWidth,
+                    height = captureHeight,
+                    captureMode = "scene",
+                    fileSize = imageBytes.Length,
+                    cameraPosition = new { x = sceneCamera.transform.position.x, y = sceneCamera.transform.position.y, z = sceneCamera.transform.position.z },
+                    cameraRotation = new { x = sceneCamera.transform.eulerAngles.x, y = sceneCamera.transform.eulerAngles.y, z = sceneCamera.transform.eulerAngles.z },
+                    message = "Scene View screenshot captured successfully"
+                };
+                
+                // Add base64 if requested
+                if (encodeAsBase64)
+                {
+                    return HandlerOutcome.Ok(new
+                    {
+                        result.success,
+                        result.path,
+                        result.width,
+                        result.height,
+                        result.captureMode,
+                        result.fileSize,
+                        result.cameraPosition,
+                        result.cameraRotation,
+                        result.message,
+                        base64Data = Convert.ToBase64String(imageBytes)
+                    });
+                }
+
+                return HandlerOutcome.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to capture Scene View: {ex.Message}");
+            }
+        }
+
+        /// <summary>Renders a specific world camera (by name/path/instanceId, else Camera.main) to a texture (G5).</summary>
+        private static HandlerOutcome CaptureCamera(string outputPath, int width, int height, bool encodeAsBase64,
+            string cameraName, string cameraPath, int? cameraInstanceId)
+        {
+            try
+            {
+                Camera cam = ResolveCamera(cameraName, cameraPath, cameraInstanceId);
+                if (cam == null)
+                    return HandlerOutcome.Fail("Camera not found (provide cameraName/cameraPath/cameraInstanceId, or tag a camera MainCamera)", "CAMERA_NOT_FOUND");
+
+                int captureWidth = width > 0 ? width : (cam.pixelWidth > 0 ? cam.pixelWidth : 1280);
+                int captureHeight = height > 0 ? height : (cam.pixelHeight > 0 ? cam.pixelHeight : 720);
+
+                RenderTexture renderTexture = new RenderTexture(captureWidth, captureHeight, 24);
+                var prevTarget = cam.targetTexture;
+                var prevActive = RenderTexture.active;
+                Texture2D screenshot = null;
+                byte[] imageBytes;
+                try
+                {
+                    cam.targetTexture = renderTexture;
+                    cam.Render();
+                    RenderTexture.active = renderTexture;
+                    screenshot = new Texture2D(captureWidth, captureHeight, TextureFormat.RGB24, false);
+                    screenshot.ReadPixels(new Rect(0, 0, captureWidth, captureHeight), 0, 0);
+                    screenshot.Apply();
+                    imageBytes = screenshot.EncodeToPNG();
+                }
+                finally
+                {
+                    // ALWAYS restore the target camera (may be Camera.main / a gameplay camera) and release textures,
+                    // even on exception — else the camera is left rendering into a destroyed RT and memory leaks. (Bug hunt.)
+                    cam.targetTexture = prevTarget;
+                    RenderTexture.active = prevActive;
+                    UnityEngine.Object.DestroyImmediate(renderTexture);
+                    if (screenshot != null) UnityEngine.Object.DestroyImmediate(screenshot);
+                }
+                File.WriteAllBytes(outputPath, imageBytes);
+                AssetDatabase.Refresh();
+
+                var cameraInfo = new
+                {
+                    name = cam.name,
+                    position = new { x = cam.transform.position.x, y = cam.transform.position.y, z = cam.transform.position.z },
+                    rotation = new { x = cam.transform.eulerAngles.x, y = cam.transform.eulerAngles.y, z = cam.transform.eulerAngles.z }
+                };
+
+                if (encodeAsBase64)
+                {
+                    return HandlerOutcome.Ok(new
+                    {
+                        success = true, path = outputPath, width = captureWidth, height = captureHeight,
+                        captureMode = "camera", fileSize = imageBytes.Length, camera = cameraInfo,
+                        message = "Camera render captured successfully",
+                        image = new { mimeType = "image/png", data = Convert.ToBase64String(imageBytes) }
+                    });
+                }
+                return HandlerOutcome.Ok(new
+                {
+                    success = true, path = outputPath, width = captureWidth, height = captureHeight,
+                    captureMode = "camera", fileSize = imageBytes.Length, camera = cameraInfo,
+                    message = "Camera render captured successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to capture camera: {ex.Message}");
+            }
+        }
+
+        // Resolve a Camera by instanceId, hierarchy path, or name; else Camera.main (the MainCamera-tagged camera).
+        private static Camera ResolveCamera(string cameraName, string cameraPath, int? cameraInstanceId)
+        {
+            if (cameraInstanceId.HasValue)
+            {
+                var obj = EditorUtility.InstanceIDToObject(cameraInstanceId.Value);
+                if (obj is GameObject go) return go.GetComponent<Camera>();
+                return obj as Camera;
+            }
+            if (!string.IsNullOrEmpty(cameraPath))
+            {
+                var go = GameObject.Find(cameraPath);
+                return go != null ? go.GetComponent<Camera>() : null;
+            }
+            if (!string.IsNullOrEmpty(cameraName))
+            {
+                foreach (var c in Camera.allCameras) if (c.name == cameraName) return c;
+                foreach (var c in Resources.FindObjectsOfTypeAll<Camera>())
+                    if (c.name == cameraName && c.gameObject.scene.IsValid()) return c; // include inactive
+                return null;
+            }
+            return Camera.main;
+        }
+
+        /// <summary>
+        /// Captures a specific Editor Window
+        /// </summary>
+        private static HandlerOutcome CaptureEditorWindow(string outputPath, string windowName, bool encodeAsBase64)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(windowName))
+                {
+                    return HandlerOutcome.Fail("windowName is required for window capture mode", "VALIDATION_ERROR");
+                }
+                
+                // Find the window
+                EditorWindow targetWindow = null;
+                var windows = Resources.FindObjectsOfTypeAll<EditorWindow>();
+                
+                foreach (var window in windows)
+                {
+                    // string.Contains(value, StringComparison) is netstandard2.1+; IndexOf is floor-safe (see COMPATIBILITY.md).
+                    if (window.titleContent.text.IndexOf(windowName, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        targetWindow = window;
+                        break;
+                    }
+                }
+                
+                if (targetWindow == null)
+                {
+                    return HandlerOutcome.Fail($"Window '{windowName}' not found", "NOT_FOUND");
+                }
+                
+                // Focus the window
+                targetWindow.Focus();
+                
+                // Get window dimensions
+                int width = (int)targetWindow.position.width;
+                int height = (int)targetWindow.position.height;
+                
+                // Note: Direct window capture is limited in Unity Editor
+                // This is a placeholder for the approach
+                return HandlerOutcome.Fail("Direct window capture is not fully supported. Use 'game' or 'scene' mode instead.", "INVALID_STATE",
+                    details: new { note = "Window capture requires platform-specific implementation" });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to capture window: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Analyzes a screenshot for content
+        /// </summary>
+        public static HandlerOutcome AnalyzeScreenshot(JObject parameters)
+        {
+            try
+            {
+                string imagePath = parameters["imagePath"]?.ToString();
+                string analysisType = parameters["analysisType"]?.ToString() ?? "basic"; // basic, ui, content
+                
+                if (string.IsNullOrEmpty(imagePath))
+                {
+                    return HandlerOutcome.Fail("imagePath is required", "VALIDATION_ERROR");
+                }
+
+                // Reject an out-of-project imagePath — a `..` must not read a file outside the project.
+                // Defense-in-depth for a direct (non-Node) caller; the Node handler also rejects `..`.
+                if (!PathSafety.IsWithinProject(imagePath))
+                {
+                    return HandlerOutcome.Fail("imagePath must stay within the project root", "VALIDATION_ERROR");
+                }
+
+                // Match the Node handler's contract so a direct TCP caller can't probe the byte size of arbitrary
+                // in-project files: require an under-Assets/Packages image. Normalize an ABSOLUTE in-project path to
+                // project-relative FIRST, so a path capture_screenshot itself returns is accepted, not just a literal
+                // "Assets/..." string. (Bug hunt Sec-5 + the absolute-path over-denial regression.)
+                var relImg = imagePath.Replace('\\', '/');
+                var dataPath = Application.dataPath.Replace('\\', '/'); // <proj>/Assets
+                var projRoot = dataPath.Substring(0, dataPath.Length - "Assets".Length); // <proj>/
+                if (relImg.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase)) relImg = relImg.Substring(projRoot.Length);
+                var lowerImg = relImg.TrimStart('/').ToLowerInvariant();
+                if (!(lowerImg.StartsWith("assets/") || lowerImg.StartsWith("packages/")))
+                    return HandlerOutcome.Fail("imagePath must be under Assets/ or Packages/", "VALIDATION_ERROR");
+                if (!(lowerImg.EndsWith(".png") || lowerImg.EndsWith(".jpg") || lowerImg.EndsWith(".jpeg")))
+                    return HandlerOutcome.Fail("imagePath must be a .png/.jpg/.jpeg image", "VALIDATION_ERROR");
+
+                if (!File.Exists(imagePath))
+                {
+                    return HandlerOutcome.Fail($"Image file not found: {imagePath}", "NOT_FOUND");
+                }
+                
+                // Load the image — destroyed in the finally so a pixel-analysis exception can't leak it. (Bug hunt.)
+                byte[] imageBytes = File.ReadAllBytes(imagePath);
+                Texture2D texture = new Texture2D(2, 2);
+                texture.LoadImage(imageBytes);
+                try
+                {
+                    var analysis = new
+                    {
+                        success = true,
+                        imagePath = imagePath,
+                        width = texture.width,
+                        height = texture.height,
+                        format = texture.format.ToString(),
+                        fileSize = imageBytes.Length,
+                        analysisType = analysisType
+                    };
+
+                    // Basic analysis
+                    if (analysisType == "basic" || analysisType == "ui")
+                    {
+                        var dominantColors = AnalyzeDominantColors(texture);
+                        var uiAnalysis = AnalyzeUIElements(texture);
+                        return HandlerOutcome.Ok(new
+                        {
+                            analysis.success,
+                            analysis.imagePath,
+                            analysis.width,
+                            analysis.height,
+                            analysis.format,
+                            analysis.fileSize,
+                            analysis.analysisType,
+                            dominantColors = dominantColors,
+                            uiElements = uiAnalysis,
+                            message = "Screenshot analyzed successfully"
+                        });
+                    }
+
+                    return HandlerOutcome.Ok(analysis);
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(texture);
+                }
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to analyze screenshot: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Gets the current Game View resolution
+        /// </summary>
+        private static Vector2Int GetGameViewResolution()
+        {
+            var gameViewType = typeof(Editor).Assembly.GetType("UnityEditor.GameView");
+            var gameView = EditorWindow.GetWindow(gameViewType, false);
+            
+            if (gameView != null)
+            {
+                var prop = gameViewType.GetProperty("currentGameViewSize", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (prop != null)
+                {
+                    var size = prop.GetValue(gameView);
+                    var widthProp = size.GetType().GetProperty("width");
+                    var heightProp = size.GetType().GetProperty("height");
+                    
+                    if (widthProp != null && heightProp != null)
+                    {
+                        int width = (int)widthProp.GetValue(size);
+                        int height = (int)heightProp.GetValue(size);
+                        return new Vector2Int(width, height);
+                    }
+                }
+            }
+            
+            // Default resolution
+            return new Vector2Int(1920, 1080);
+        }
+        
+        /// <summary>
+        /// Analyzes dominant colors in the image
+        /// </summary>
+        private static object AnalyzeDominantColors(Texture2D texture)
+        {
+            // Sample pixels at intervals
+            int sampleInterval = Mathf.Max(1, texture.width * texture.height / 1000);
+            var colorCounts = new System.Collections.Generic.Dictionary<Color32, int>();
+            
+            for (int y = 0; y < texture.height; y += sampleInterval)
+            {
+                for (int x = 0; x < texture.width; x += sampleInterval)
+                {
+                    Color32 pixel = texture.GetPixel(x, y);
+                    // Quantize colors
+                    pixel.r = (byte)(pixel.r / 32 * 32);
+                    pixel.g = (byte)(pixel.g / 32 * 32);
+                    pixel.b = (byte)(pixel.b / 32 * 32);
+                    
+                    if (colorCounts.ContainsKey(pixel))
+                        colorCounts[pixel]++;
+                    else
+                        colorCounts[pixel] = 1;
+                }
+            }
+            
+            // Get top colors
+            var topColors = new System.Collections.Generic.List<object>();
+            var sortedColors = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<Color32, int>>(colorCounts);
+            sortedColors.Sort((a, b) => b.Value.CompareTo(a.Value));
+            
+            for (int i = 0; i < Mathf.Min(5, sortedColors.Count); i++)
+            {
+                var color = sortedColors[i].Key;
+                topColors.Add(new
+                {
+                    r = color.r,
+                    g = color.g,
+                    b = color.b,
+                    hex = ColorUtility.ToHtmlStringRGB(color),
+                    percentage = (sortedColors[i].Value * 100.0f) / (texture.width * texture.height / sampleInterval)
+                });
+            }
+            
+            return topColors;
+        }
+        
+        /// <summary>
+        /// Basic UI element detection
+        /// </summary>
+        private static object AnalyzeUIElements(Texture2D texture)
+        {
+            // This is a simplified UI detection
+            // In a real implementation, you might use computer vision techniques
+            
+            var analysis = new
+            {
+                hasHighContrast = false,
+                possibleButtons = 0,
+                possibleText = 0,
+                edgePixelRatio = 0.0f
+            };
+            
+            // Simple edge detection to identify UI elements. Read the whole pixel buffer ONCE
+            // (GetPixels) instead of three GetPixel native round-trips per pixel — the old loop did
+            // ~3*W*H managed->native calls, seconds of main-thread stall on a real image. (Audit #36.)
+            int w = texture.width, h = texture.height;
+            Color[] pixels = texture.GetPixels();
+            int edgePixels = 0;
+            for (int y = 1; y < h - 1; y++)
+            {
+                for (int x = 1; x < w - 1; x++)
+                {
+                    Color current = pixels[y * w + x];
+                    Color right = pixels[y * w + (x + 1)];
+                    Color bottom = pixels[(y + 1) * w + x];
+
+                    float diffRight = Mathf.Abs(current.grayscale - right.grayscale);
+                    float diffBottom = Mathf.Abs(current.grayscale - bottom.grayscale);
+
+                    if (diffRight > 0.3f || diffBottom > 0.3f)
+                    {
+                        edgePixels++;
+                    }
+                }
+            }
+            
+            return new
+            {
+                edgePixelRatio = (float)edgePixels / (texture.width * texture.height),
+                analysis = "Basic UI analysis complete"
+            };
+        }
+        
+        /// <summary>
+        /// Validates capture mode
+        /// </summary>
+        private static bool IsValidCaptureMode(string mode)
+        {
+            return mode == "game" || mode == "scene" || mode == "window" || mode == "camera";
+        }
+    }
+}

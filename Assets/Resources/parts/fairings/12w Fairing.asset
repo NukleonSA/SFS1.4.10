@@ -1,0 +1,360 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: 12w Fairing
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: 整流
+  description:
+  prefab: {fileID: 4985305603660343, guid: 3d6cb7f9e661cb04486c7f5a2e54772d, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 3.15, y: 0, z: 0.05}
+    - {x: 3.15, y: 1.5, z: 0.05}
+    hitboxOnly: 0
+  - hitboxPoints:
+    - {x: -3.15, y: 0, z: 0.05}
+    - {x: -3.15, y: 1.5, z: 0.05}
+    hitboxOnly: 0
+  - hitboxPoints:
+    - {x: 0, y: 0, z: 3.1}
+    - {x: 0, y: 1.5, z: 3.1}
+    hitboxOnly: 1
+  attachmentSurfaces:
+  - switchName:
+    size: {x: -0.1, y: 0}
+    start: {x: -3.1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 0.1, y: 0}
+    start: {x: 3.1, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: -0.1, y: 0}
+    start: {x: -3.1, y: 1.5}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 0.1, y: 0}
+    start: {x: 3.1, y: 1.5}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 0, y: 0.3}
+    start: {x: -3, y: 0}
+    fuelFlow: 0
+  - switchName:
+    size: {x: 0, y: 0.3}
+    start: {x: 3, y: 0}
+    fuelFlow: 0
+  switchPoints:
+  - switchName:
+    position: {x: 0, y: 0}
+    type: 12 fairing
+    trigger: 1
+    magnet: 1
+  - switchName:
+    position: {x: 0, y: 1.5}
+    type: 12 fairing
+    trigger: 1
+    magnet: 1
+  - switchName: bot1
+    position: {x: 0, y: 0}
+    type: 14 fairing
+    trigger: 0
+    magnet: 1
+  - switchName: top1
+    position: {x: 0, y: 1.5}
+    type: 14 fairing
+    trigger: 0
+    magnet: 1
+  dragMultiplier: 1
+  dragSurfaces: []
+  switchData:
+    parent: {fileID: 11400000}
+    variables:
+    - switchName: botSize
+      code: 'bot1? 0.5 : bot2? 1 : 0'
+    - switchName: topSize
+      code: 'top1? 0.5 : top2? 1 : 0'
+    outputs:
+    - code: '!game'
+      type: 0
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: game
+      type: 0
+      setType: 0
+      path: 01000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: botSize // Body Bot
+      type: 5
+      setType: 0
+      path: 0000000000000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: botSize
+      type: 5
+      setType: 0
+      path: 0100000002000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: botSize
+      type: 5
+      setType: 0
+      path: 0100000003000000
+      color: {r: 0, g: 0, b: 0, a: 0}
+      index: 0
+      hitboxIndex: 0
+    - code: topSize // Body top
+      type: 5
+      setType: 0
+      path: 0000000000000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: topSize
+      type: 5
+      setType: 0
+      path: 0100000002000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: topSize
+      type: 5
+      setType: 0
+      path: 0100000003000000
+      color: {r: 0, g: 0, b: 0, a: 0}
+      index: 1
+      hitboxIndex: 0
+    - code: botSize // Edge left
+      type: 5
+      setType: 1
+      path: 02000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: topSize
+      type: 5
+      setType: 1
+      path: 02000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: botSize // Edge Right
+      type: 5
+      setType: 1
+      path: 03000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: topSize
+      type: 5
+      setType: 1
+      path: 03000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: botSize // Center hitbox
+      type: 6
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 2
+    - code: topSize
+      type: 6
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 2
+    - code: botSize // Edge Hitbox
+      type: 6
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: topSize
+      type: 6
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: -botSize
+      type: 6
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 1
+    - code: -topSize
+      type: 6
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 1
+    - code: -botSize // Surfaces
+      type: 7
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: botSize
+      type: 7
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 1
+      hitboxIndex: 0
+    - code: -topSize
+      type: 7
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 2
+      hitboxIndex: 0
+    - code: topSize
+      type: 7
+      setType: 1
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 3
+      hitboxIndex: 0
+    - code: '!(bot1 || bot2)'
+      type: 0
+      setType: 0
+      path: 0000000001000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 0
+      hitboxIndex: 0
+    - code: 'bot1 || bot2? -100 : 0'
+      type: 7
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 4
+      hitboxIndex: 0
+    - code: 'bot1 || bot2? -100 : 0'
+      type: 7
+      setType: 0
+      path: 00000000
+      color: {r: 1, g: 1, b: 1, a: 1}
+      index: 5
+      hitboxIndex: 0
+  skins:
+    parent: {fileID: 11400000}
+    skins:
+    - {fileID: 11400000, guid: 482d5b84261674f478b164c05f35bb6a, type: 2}
+    - {fileID: 11400000, guid: 1030f2779613de2438129f4283f0d4ba, type: 2}
+    - {fileID: 11400000, guid: e5a6950afe8ce3a49a8f8fbcb20830f6, type: 2}
+    - {fileID: 11400000, guid: a16a51109e85afb4299a4d1b23a7ba83, type: 2}
+    - {fileID: 11400000, guid: 8884c95833c80e942855a8c331ae332e, type: 2}
+    - {fileID: 11400000, guid: 88e8c51040d1e2c4a88a8cb030b1a0ca, type: 2}
+    - {fileID: 11400000, guid: ed9780a0f157f2d4ea212c373cd9b87a, type: 2}
+    - {fileID: 11400000, guid: c10564596df6d094c95872502862bdfc, type: 2}
+    - {fileID: 11400000, guid: c98a426233706824c950b4e7145f7f23, type: 2}
+    - {fileID: 11400000, guid: 20e4d0043db6ab845860681969eac3ae, type: 2}
+    - {fileID: 11400000, guid: b95596e0da67efa419cb95db603a8ff6, type: 2}
+    - {fileID: 11400000, guid: 6ec82beca5124284490b08f1a9aa0d93, type: 2}
+    - {fileID: 11400000, guid: fb55796fbc3a6fe479e0a07679cf26ec, type: 2}
+    - {fileID: 11400000, guid: 37f8ae3bdb5abab4a916c66582fb203a, type: 2}
+    - {fileID: 11400000, guid: cf58156dbe66b8b4c982ae2f02c7d994, type: 2}
+    - {fileID: 11400000, guid: add45ac5ed9d7d74a9c8d2a91d4e69e1, type: 2}
+    - {fileID: 11400000, guid: d348166c759fe9d4a90a2fbf18066346, type: 2}
+    - {fileID: 11400000, guid: b17245fa86a87614d99dc4dfc2134293, type: 2}
+    - {fileID: 11400000, guid: 1f3586f14f92ef8458bf8d54a7b9545f, type: 2}
+    - {fileID: 11400000, guid: 45b1ae05fcb44e34d947897fe224ea19, type: 2}
+    - {fileID: 11400000, guid: fa7ec6a39ea3f3a4c93b9f4d59fd868d, type: 2}
+    - {fileID: 11400000, guid: f9076447b45b9b94eadd35e3cbb9a47b, type: 2}
+    - {fileID: 11400000, guid: 653dd85b3e623bb49a203254f50209e5, type: 2}
+    - {fileID: 11400000, guid: 6388e13216fbe5c4cb004406f127e90e, type: 2}
+    - {fileID: 11400000, guid: 5d1d2cdaad3f96f4ba12f64c711559fb, type: 2}
+    - {fileID: 11400000, guid: 94910936489c2f348a1f2029b76416a2, type: 2}
+    - {fileID: 11400000, guid: 7aecff35a701ae84ab4a7dadccefab3a, type: 2}
+    - {fileID: 11400000, guid: 2f171b19aa8528d479612f55e8465726, type: 2}
+    - {fileID: 11400000, guid: 866cf4aad28f6874d8bcd70977c1bcd5, type: 2}
+    - {fileID: 11400000, guid: 9565a32244cc4d74c84bfca023d16331, type: 2}
+    - {fileID: 11400000, guid: 1ed6ed04921003448a1ffe0e082cf871, type: 2}
+    - {fileID: 11400000, guid: 05016d1c5901f8e4c9f267252c3c087b, type: 2}
+    - {fileID: 11400000, guid: 984827b23bcd4274d9f9102d0f13fd68, type: 2}
+    - {fileID: 11400000, guid: 63f7aa09350541b45845b32a010143cf, type: 2}
+    - {fileID: 11400000, guid: 232c092f88b6250469a3f3765e16226a, type: 2}
+    - {fileID: 11400000, guid: 0e705838563f72046acb1939bfdbc3b0, type: 2}
+    - {fileID: 11400000, guid: 0e6223750dfb0514395a9465b9da4427, type: 2}
+    - {fileID: 11400000, guid: 6430c0026090d9248ba6e07cb78a9dde, type: 2}
+    - {fileID: 11400000, guid: 42cde7ab06708d04196a5c2c3d3edc76, type: 2}
+    - {fileID: 11400000, guid: 5ddc3df62277dd144b1c659fcd1b99df, type: 2}
+    - {fileID: 11400000, guid: 9e6e72b7261e4764aae8e0b7ff89e8e2, type: 2}
+    - {fileID: 11400000, guid: 1d2d750ab20c1b94e87e68d028232a21, type: 2}
+    - {fileID: 11400000, guid: 61623d4504d31d14789957ff60f13697, type: 2}
+    - {fileID: 11400000, guid: 24660f99f51ed5a47915defe08ff59a9, type: 2}
+    - {fileID: 11400000, guid: 8ae41d6c771973244b73a214b66510fd, type: 2}
+    - {fileID: 11400000, guid: e11d1acdc48dd2f4fae91d03a62d3664, type: 2}
+    - {fileID: 11400000, guid: e78491977eda6ed4885a5010ddef3991, type: 2}
+    - {fileID: 11400000, guid: f6974491e08336940bac9583240845be, type: 2}
+    - {fileID: 11400000, guid: 86c6debe38127494b8a5a1e455d7c6ee, type: 2}
+    - {fileID: 11400000, guid: 34965a0a5edfbe540837fd8e22c2f6ff, type: 2}
+    - {fileID: 11400000, guid: ddf917d0a4c1ca644a491c36de90fb24, type: 2}
+    - {fileID: 11400000, guid: f229df53cd7900a418941f6394995581, type: 2}
+    - {fileID: 11400000, guid: 28a94fa1e0dd90744aec7ed3fca6d85f, type: 2}
+    - {fileID: 11400000, guid: f48b3f8f687b4ee43b743bb6bbf675a9, type: 2}
+    - {fileID: 11400000, guid: 548b967a5992e464fa96c87df4eab620, type: 2}
+    - {fileID: 11400000, guid: 96ec2fb33b2e77346a4c9028210b7338, type: 2}
+    - {fileID: 11400000, guid: b4952ef2790f3dc409d78e6e2b3e1e47, type: 2}
+    - {fileID: 11400000, guid: c7e4a58f1d6d60244baa62f6a43ab9f5, type: 2}
+    - {fileID: 11400000, guid: 97b7708adb06ab748b4f74d8cd523670, type: 2}
+    - {fileID: 11400000, guid: 56a55f8cf44af9e4aba65202c2a2cb36, type: 2}
+    - {fileID: 11400000, guid: 1281437083629c8479db19e336479ea8, type: 2}
+    - {fileID: 11400000, guid: c150aebe15f47a542865ad4b6753915f, type: 2}
+    - {fileID: 11400000, guid: a3b0cce6d4d51b846bc7ab7adf0afaac, type: 2}
+    - {fileID: 11400000, guid: 3775708a2085c7f4d9ea78e01fc03466, type: 2}
+    - {fileID: 11400000, guid: 4cfdd25a6fc52a14f8d7155b923a4d60, type: 2}
+    - {fileID: 11400000, guid: 3626bc6e81f188a4d8a82fb0deae83d3, type: 2}
+    - {fileID: 11400000, guid: 0798fe5f65e62644881040d8dabf235b, type: 2}
+    - {fileID: 11400000, guid: 104634a9b3e45e0408209d47c76c8d06, type: 2}
+    - {fileID: 11400000, guid: bd76aa088bee8b14d8bd3f57058cc763, type: 2}
+    - {fileID: 11400000, guid: ccfe1e60226266740aa668ad022987c9, type: 2}
+    - {fileID: 11400000, guid: dec5dd58ee9fb3a4785a0d77a57d1ba4, type: 2}
+    - {fileID: 11400000, guid: 4df67ba9ed0e32d42aa64fc4fd30a519, type: 2}
+    - {fileID: 11400000, guid: 928a12aee93dd314fb934c9cc8eeadac, type: 2}
+    - {fileID: 11400000, guid: 3302375503fe7e44cba53cf1a6c6271c, type: 2}
+    - {fileID: 11400000, guid: 4bbbc4ddb77ab8a41bbcfb0be450985d, type: 2}
+    paths:
+    - path: 0000000000000000
+    - path: 0100000002000000
+    - path: 0100000003000000
+  centerOfRotation: {x: 0, y: 1}
+  depth: -1
+  pickGridScale: 0.165
+  flip2stickX: 0
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 1
+  oldName: []

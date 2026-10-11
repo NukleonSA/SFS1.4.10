@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3120bff566419a73866c47d0b2ce1574, type: 3}
+  m_Name: PDF_005_3
+  m_EditorClassIdentifier: 
+  texture: {fileID: 21300000, guid: eae64f1dfd0a98745b910d35804d33e6, type: 2}
+  shading: {fileID: 21300000, guid: 53397a8b66fc16148887a022e4cf82a4, type: 2}
+  icon: {fileID: 21300000, guid: a32b067b212f98948be0eed6ad28e8f3, type: 2}
+  color: {r: 0.8039, g: 0.3608, b: 0.3608, a: 1}
+  scale: 0.5
+  tileScale: 1
+  drawMode: 3

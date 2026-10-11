@@ -1,0 +1,823 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEditor;
+using Newtonsoft.Json.Linq;
+using UnityEditorMCP.Core;
+
+namespace UnityEditorMCP.Handlers
+{
+    /// <summary>
+    /// Handles GameObject-related operations
+    /// </summary>
+    public static class GameObjectHandler
+    {
+        // Stage-aware GameObject lookup. When a prefab stage is open, resolve against IT FIRST — otherwise a
+        // same-named main-scene object would shadow the stage object and a by-path mutation would silently hit the
+        // wrong target while the user is editing the prefab (code-review HIGH). Fall back to the main scene
+        // (GameObject.Find) only when the path isn't in the stage, or when no stage is open.
+        // True if `t` is `ancestor` itself or nested under it (used to reject a self/own-descendant reparent up-front).
+        private static bool IsDescendantOf(Transform t, Transform ancestor)
+        {
+            for (var cur = t; cur != null; cur = cur.parent) if (cur == ancestor) return true;
+            return false;
+        }
+
+        public static GameObject FindGameObjectStageAware(string path)
+        {
+            var stageScene = AssetManagementHandler.GetOpenPrefabStageScene();
+            if (stageScene.HasValue && stageScene.Value.IsValid())
+            {
+                var inStage = FindByPathInScene(stageScene.Value, path);
+                if (inStage != null) return inStage;
+            }
+            var go = GameObject.Find(path);
+            if (go != null) return go;
+            // round-8: GameObject.Find misses INACTIVE objects, which strands them (you can't reactivate or delete an
+            // inactive object by path). FindByPathInScene walks roots + transform.Find — both traverse inactive — so
+            // resolve any loaded scene by path as a final fallback.
+            for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+            {
+                var s = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+                if (s.isLoaded)
+                {
+                    var found = FindByPathInScene(s, path);
+                    if (found != null) return found;
+                }
+            }
+            return null;
+        }
+
+        private static GameObject FindByPathInScene(UnityEngine.SceneManagement.Scene scene, string path)
+        {
+            var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) return null;
+            GameObject current = null;
+            foreach (var root in scene.GetRootGameObjects())
+                if (root.name == parts[0]) { current = root; break; }
+            for (int i = 1; current != null && i < parts.Length; i++)
+            {
+                var child = current.transform.Find(parts[i]);
+                current = child != null ? child.gameObject : null;
+            }
+            return current;
+        }
+
+        /// <summary>
+        /// Creates a new GameObject based on parameters
+        /// </summary>
+        public static HandlerOutcome CreateGameObject(JObject parameters)
+        {
+            try
+            {
+                if (EditorApplication.isPlaying)
+                    return HandlerOutcome.Fail("create_gameobject refuses in play mode — the object would evaporate on stop.", "PLAY_MODE");
+                // Parse parameters
+                string name = parameters["name"]?.ToString() ?? "GameObject";
+                // round-6 bug #3: an explicit empty/whitespace name creates a GameObject whose path is "/", which
+                // cannot be addressed, selected, or deleted by path (orphaned until scene reload). Reject it.
+                if (string.IsNullOrWhiteSpace(name))
+                    return HandlerOutcome.Fail("name must be a non-empty string — an empty name yields path \"/\", which cannot be addressed or deleted by path.", "VALIDATION_ERROR");
+                string primitiveType = parameters["primitiveType"]?.ToString();
+
+                // Parse transform
+                var position = ParseVector3(parameters["position"]) ?? Vector3.zero;
+                var rotation = ParseVector3(parameters["rotation"]) ?? Vector3.zero;
+                var scale = ParseVector3(parameters["scale"]) ?? Vector3.one;
+
+                // Parse parent
+                string parentPath = parameters["parentPath"]?.ToString();
+                GameObject parent = null;
+                if (!string.IsNullOrEmpty(parentPath))
+                {
+                    parent = FindGameObjectStageAware(parentPath); // also searches an open prefab stage's scene
+                    if (parent == null)
+                    {
+                        return HandlerOutcome.Fail($"Parent GameObject not found: {parentPath}", "NOT_FOUND");
+                    }
+                }
+                else
+                {
+                    // No explicit parent: if a prefab is open in stage mode, add the new object UNDER the prefab
+                    // root so it becomes part of the prefab (a bare scene root in the stage would not be saved).
+                    parent = AssetManagementHandler.GetOpenPrefabStageRoot();
+                }
+
+                // Create GameObject
+                GameObject newObject;
+                if (!string.IsNullOrEmpty(primitiveType))
+                {
+                    newObject = CreatePrimitive(primitiveType);
+                    if (newObject == null)
+                    {
+                        return HandlerOutcome.Fail($"Unknown primitive type: {primitiveType}", "VALIDATION_ERROR");
+                    }
+                }
+                else
+                {
+                    newObject = new GameObject();
+                }
+
+                // Set properties
+                newObject.name = name;
+                newObject.transform.position = position;
+                newObject.transform.rotation = Quaternion.Euler(rotation);
+                newObject.transform.localScale = scale;
+
+                // Set parent
+                if (parent != null)
+                {
+                    newObject.transform.SetParent(parent.transform, true);
+                }
+
+                // Set tag — an explicitly-provided invalid tag is a VALIDATION_ERROR (all-or-nothing, consistent with
+                // modify_gameobject + the components path), not a silent warn-and-continue. (Bug hunt Mut-13.)
+                string tag = parameters["tag"]?.ToString();
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    try { newObject.tag = tag; }
+                    catch (Exception)
+                    {
+                        UnityEngine.Object.DestroyImmediate(newObject);
+                        return HandlerOutcome.Fail($"Tag '{tag}' is not defined (add it in Tags & Layers, or use manage_tags).", "VALIDATION_ERROR");
+                    }
+                }
+
+                // Set layer — reject an explicitly-provided out-of-range OR non-numeric layer instead of silently
+                // ignoring it. ToObject<int> THROWS on a non-numeric token (e.g. "abc"); without this try/catch that
+                // throw escaped to the outer catch AFTER the object was created -> a leaked orphan object. (Bug hunt Q.)
+                var layerToken = parameters["layer"];
+                if (layerToken != null && layerToken.Type != JTokenType.Null)
+                {
+                    int layer;
+                    try { layer = layerToken.ToObject<int>(); }
+                    catch
+                    {
+                        UnityEngine.Object.DestroyImmediate(newObject);
+                        return HandlerOutcome.Fail("layer must be an integer in 0-31.", "VALIDATION_ERROR");
+                    }
+                    if (layer < 0 || layer > 31)
+                    {
+                        UnityEngine.Object.DestroyImmediate(newObject);
+                        return HandlerOutcome.Fail($"layer must be 0-31 (got {layer}).", "VALIDATION_ERROR");
+                    }
+                    newObject.layer = layer;
+                }
+
+                // round-7 FR2: support a `components` array (was silently dropped — created only a Transform). Add each
+                // by type name; an unknown type is a VALIDATION_ERROR (not a silent drop), and the half-built object is
+                // discarded so the call is all-or-nothing.
+                var addedComponents = new List<string>();
+                if (parameters["components"] is JArray componentsToAdd)
+                {
+                    try
+                    {
+                        foreach (var c in componentsToAdd)
+                        {
+                            var compTypeName = c?.ToString();
+                            if (string.IsNullOrEmpty(compTypeName)) continue;
+                            var compType = ComponentHandler.ResolveComponentType(compTypeName);
+                            if (compType == null)
+                            {
+                                UnityEngine.Object.DestroyImmediate(newObject);
+                                return HandlerOutcome.Fail($"Unknown component type in 'components': {compTypeName}", "VALIDATION_ERROR");
+                            }
+                            var added = newObject.AddComponent(compType);
+                            if (added == null)
+                            {
+                                // review round-2: AddComponent returns null (does NOT throw) for a DisallowMultipleComponent
+                                // violation or a missing required dependency — treat null as failure, preserving all-or-nothing
+                                // (matches ComponentHandler.AddComponent's contract). Otherwise it would false-success.
+                                UnityEngine.Object.DestroyImmediate(newObject);
+                                return HandlerOutcome.Fail($"Failed to add component '{compTypeName}' (AddComponent returned null — likely DisallowMultipleComponent or a missing required dependency)", "INVALID_STATE");
+                            }
+                            addedComponents.Add(added.GetType().Name);
+                        }
+                    }
+                    catch
+                    {
+                        // review L2: AddComponent can throw (DisallowMultipleComponent / RequireComponent conflicts) —
+                        // preserve all-or-nothing by destroying the half-built object before the failure propagates.
+                        UnityEngine.Object.DestroyImmediate(newObject);
+                        throw;
+                    }
+                }
+
+                // Register undo
+                Undo.RegisterCreatedObjectUndo(newObject, $"Create {name}");
+
+                // Select the new object
+                Selection.activeGameObject = newObject;
+
+                // Return info about created object
+                return HandlerOutcome.Ok(new
+                {
+                    id = newObject.GetInstanceID(),
+                    name = newObject.name,
+                    path = GetGameObjectPath(newObject),
+                    position = new { x = position.x, y = position.y, z = position.z },
+                    rotation = new { x = rotation.x, y = rotation.y, z = rotation.z },
+                    scale = new { x = scale.x, y = scale.y, z = scale.z },
+                    tag = newObject.tag,
+                    layer = newObject.layer,
+                    isActive = newObject.activeSelf,
+                    addedComponents = addedComponents
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to create GameObject: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Creates a primitive GameObject
+        /// </summary>
+        private static GameObject CreatePrimitive(string type)
+        {
+            switch (type.ToLower())
+            {
+                case "cube":
+                    return GameObject.CreatePrimitive(PrimitiveType.Cube);
+                case "sphere":
+                    return GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                case "cylinder":
+                    return GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                case "capsule":
+                    return GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                case "plane":
+                    return GameObject.CreatePrimitive(PrimitiveType.Plane);
+                case "quad":
+                    return GameObject.CreatePrimitive(PrimitiveType.Quad);
+                default:
+                    return null;
+            }
+        }
+        
+        /// <summary>
+        /// Parses a Vector3 from JToken
+        /// </summary>
+        private static Vector3? ParseVector3(JToken token)
+        {
+            if (token == null) return null;
+            
+            try
+            {
+                if (token is JObject obj)
+                {
+                    float x = obj["x"]?.ToObject<float>() ?? 0;
+                    float y = obj["y"]?.ToObject<float>() ?? 0;
+                    float z = obj["z"]?.ToObject<float>() ?? 0;
+                    return new Vector3(x, y, z);
+                }
+            }
+            catch
+            {
+                // Invalid format
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Gets the full hierarchy path of a GameObject
+        /// </summary>
+        public static string GetGameObjectPath(GameObject obj)
+        {
+            if (obj == null) return "";
+            
+            string path = obj.name;
+            Transform parent = obj.transform.parent;
+            
+            while (parent != null)
+            {
+                path = parent.name + "/" + path;
+                parent = parent.parent;
+            }
+            
+            return "/" + path;
+        }
+        
+        /// <summary>
+        /// Modifies an existing GameObject
+        /// </summary>
+        public static HandlerOutcome ModifyGameObject(JObject parameters)
+        {
+            try
+            {
+                if (EditorApplication.isPlaying)
+                    return HandlerOutcome.Fail("modify_gameobject refuses in play mode — scene changes evaporate on stop.", "PLAY_MODE");
+                string path = parameters["path"]?.ToString();
+                if (string.IsNullOrEmpty(path))
+                {
+                    return HandlerOutcome.Fail("GameObject path is required", "VALIDATION_ERROR");
+                }
+
+                // Find the GameObject
+                GameObject obj = FindGameObjectStageAware(path);
+                if (obj == null)
+                {
+                    return HandlerOutcome.Fail($"GameObject not found: {path}", "NOT_FOUND");
+                }
+                
+                // Store original values for undo
+                var originalName = obj.name;
+                var originalPosition = obj.transform.position;
+                var originalRotation = obj.transform.rotation;
+                var originalScale = obj.transform.localScale;
+                var originalActive = obj.activeSelf;
+
+                // Validate ALL params BEFORE mutating — an invalid tag / unresolvable parent / out-of-range layer must
+                // not leave a PARTIAL mutation (name/position already applied) behind an error return. (Bug hunt Mut-5.)
+                string tag = parameters["tag"]?.ToString();
+                if (!string.IsNullOrEmpty(tag) && System.Array.IndexOf(UnityEditorInternal.InternalEditorUtility.tags, tag) < 0)
+                    return HandlerOutcome.Fail($"Tag '{tag}' is not defined. Create it first via manage_tags (action: add).", "VALIDATION_ERROR");
+
+                var layerToken = parameters["layer"];
+                int? layerValue = null;
+                if (layerToken != null && layerToken.Type != JTokenType.Null)
+                {
+                    int lv;
+                    try { lv = layerToken.ToObject<int>(); }
+                    catch { return HandlerOutcome.Fail("layer must be an integer in 0-31.", "VALIDATION_ERROR"); }
+                    if (lv < 0 || lv > 31)
+                        return HandlerOutcome.Fail($"layer must be 0-31 (got {lv}).", "VALIDATION_ERROR");
+                    layerValue = lv;
+                }
+
+                // Parse + validate 'active' BEFORE any mutation (Mut-5 invariant) — a non-boolean value previously threw
+                // AFTER name/transform were applied, persisting a partial mutation under the error. (Bug hunt.)
+                var activeToken = parameters["active"];
+                bool? activeValue = null;
+                if (activeToken != null && activeToken.Type != JTokenType.Null)
+                {
+                    try { activeValue = activeToken.ToObject<bool>(); }
+                    catch { return HandlerOutcome.Fail("active must be a boolean.", "VALIDATION_ERROR"); }
+                }
+
+                bool reparent = parameters.ContainsKey("parentPath"); // present (even null) -> reparent/unparent
+                GameObject resolvedParent = null;
+                if (reparent)
+                {
+                    string pp = parameters["parentPath"]?.ToString();
+                    if (!string.IsNullOrEmpty(pp))
+                    {
+                        resolvedParent = FindGameObjectStageAware(pp);
+                        if (resolvedParent == null)
+                            return HandlerOutcome.Fail($"Parent GameObject not found: {pp}", "NOT_FOUND");
+                        // Reject a self / own-descendant reparent BEFORE any mutation — Unity silently refuses it, and a
+                        // late verify would fire AFTER name/transform/tag/layer were already applied, persisting a PARTIAL
+                        // mutation under an error. Validate-first (the Mut-5 invariant). (Bug hunt: partial-mutation regression.)
+                        if (IsDescendantOf(resolvedParent.transform, obj.transform))
+                            return HandlerOutcome.Fail("Cannot parent a GameObject under itself or its own descendant.", "VALIDATION_ERROR");
+                    }
+                }
+
+                // Register undo BEFORE mutating so Unity snapshots the ORIGINAL state.
+                // (RecordObject called after the change records the post-change state,
+                // which makes Ctrl+Z a no-op — the bug this fixes.)
+                Undo.RecordObject(obj, "Modify GameObject");
+                Undo.RecordObject(obj.transform, "Modify GameObject Transform");
+
+                // Apply modifications
+                bool modified = false;
+                
+                // Name
+                string newName = parameters["name"]?.ToString();
+                if (!string.IsNullOrEmpty(newName) && newName != obj.name)
+                {
+                    obj.name = newName;
+                    modified = true;
+                }
+                
+                // Transform. F3: explicit space — world (default) uses transform.position/.rotation; local uses
+                // localPosition/localEulerAngles. (scale is always localScale — there is no world scale.)
+                bool local = string.Equals(parameters["space"]?.ToString(), "local", StringComparison.OrdinalIgnoreCase);
+                var position = ParseVector3(parameters["position"]);
+                if (position.HasValue)
+                {
+                    if (local) obj.transform.localPosition = position.Value;
+                    else obj.transform.position = position.Value;
+                    modified = true;
+                }
+
+                var rotation = ParseVector3(parameters["rotation"]);
+                if (rotation.HasValue)
+                {
+                    if (local) obj.transform.localEulerAngles = rotation.Value;
+                    else obj.transform.rotation = Quaternion.Euler(rotation.Value);
+                    modified = true;
+                }
+                
+                var scale = ParseVector3(parameters["scale"]);
+                if (scale.HasValue)
+                {
+                    obj.transform.localScale = scale.Value;
+                    modified = true;
+                }
+                
+                // Active state (parsed + validated above)
+                if (activeValue.HasValue && activeValue.Value != obj.activeSelf)
+                {
+                    obj.SetActive(activeValue.Value);
+                    modified = true;
+                }
+                
+                // Tag (validated above)
+                if (!string.IsNullOrEmpty(tag) && tag != obj.tag)
+                {
+                    obj.tag = tag;
+                    modified = true;
+                }
+
+                // Layer (validated above)
+                if (layerValue.HasValue && layerValue.Value != obj.layer)
+                {
+                    obj.layer = layerValue.Value;
+                    modified = true;
+                }
+
+                // Parent (resolved + validated above; reparent==true allows null -> unparent)
+                if (reparent)
+                {
+                    var desiredParent = resolvedParent ? resolvedParent.transform : null;
+                    if (obj.transform.parent != desiredParent)
+                    {
+                        // The self / own-descendant case (Unity's only silent SetParent refusal) was rejected up-front,
+                        // before any mutation — so no late Fail is needed here (which would leave a partial mutation). (Bug hunt.)
+                        obj.transform.SetParent(desiredParent, true);
+                        modified = true;
+                    }
+                }
+
+                // A reparent above uses worldPositionStays=true (preserves world coords, recomputes local). So if
+                // the caller asked for a LOCAL-space transform AND changed the parent, re-apply it now relative to
+                // the NEW parent — otherwise the local values would be computed against the old parent.
+                if (local && parameters.ContainsKey("parentPath"))
+                {
+                    if (position.HasValue) obj.transform.localPosition = position.Value;
+                    if (rotation.HasValue) obj.transform.localEulerAngles = rotation.Value;
+                }
+                
+                if (modified)
+                {
+                    // Mark as dirty for saving (undo was already recorded above, before
+                    // the mutations).
+                    EditorUtility.SetDirty(obj);
+                }
+                
+                // Return updated info
+                return HandlerOutcome.Ok(new
+                {
+                    id = obj.GetInstanceID(),
+                    name = obj.name,
+                    path = GetGameObjectPath(obj),
+                    position = new { x = obj.transform.position.x, y = obj.transform.position.y, z = obj.transform.position.z },
+                    localPosition = new { x = obj.transform.localPosition.x, y = obj.transform.localPosition.y, z = obj.transform.localPosition.z },
+                    rotation = new { x = obj.transform.rotation.eulerAngles.x, y = obj.transform.rotation.eulerAngles.y, z = obj.transform.rotation.eulerAngles.z },
+                    localRotation = new { x = obj.transform.localEulerAngles.x, y = obj.transform.localEulerAngles.y, z = obj.transform.localEulerAngles.z },
+                    scale = new { x = obj.transform.localScale.x, y = obj.transform.localScale.y, z = obj.transform.localScale.z },
+                    tag = obj.tag,
+                    layer = obj.layer,
+                    isActive = obj.activeSelf,
+                    modified = modified
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to modify GameObject: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Finds GameObjects based on search criteria
+        /// </summary>
+        public static HandlerOutcome FindGameObjects(JObject parameters)
+        {
+            try
+            {
+                string name = parameters["name"]?.ToString();
+                // round-6 bug #2: an explicit empty name was treated as "no name filter", so find {name:""} matched
+                // EVERY object. Reject an explicit-but-empty name; omit `name` entirely to search by tag/layer only.
+                if (parameters["name"] != null && string.IsNullOrEmpty(name))
+                    return HandlerOutcome.Fail("name must be non-empty when provided (an empty name matched every object). Omit `name` to search by tag/layer only.", "VALIDATION_ERROR");
+                string tag = parameters["tag"]?.ToString();
+                int? layer = parameters["layer"]?.ToObject<int>();
+                bool exactMatch = parameters["exactMatch"]?.ToObject<bool>() ?? true;
+                int limit = parameters["limit"]?.ToObject<int>() ?? 200;
+                if (limit <= 0) limit = 200;
+
+                List<GameObject> results = new List<GameObject>();
+
+                // Stage-aware: when a prefab stage is open, search the STAGE (matching FindGameObjectStageAware + the
+                // mutation resolvers) so find_gameobject doesn't miss the prefab's objects / return background objects
+                // while modify/delete target the stage. (Bug hunt: find not stage-aware.)
+                GameObject[] allObjects;
+                var stageScene = AssetManagementHandler.GetOpenPrefabStageScene();
+                if (stageScene.HasValue && stageScene.Value.IsValid())
+                {
+                    var stageList = new List<GameObject>();
+                    foreach (var root in stageScene.Value.GetRootGameObjects())
+                        foreach (var tr in root.GetComponentsInChildren<Transform>(true)) stageList.Add(tr.gameObject);
+                    allObjects = stageList.ToArray();
+                }
+                else
+                {
+                    // Get all GameObjects in scene (including inactive). FindObjectsOfType<T>(includeInactive) is
+                    // 2020.1+; on the floor, FindObjectsOfTypeAll returns inactive too (plus assets/hidden), so filter
+                    // to scene objects. (COMPATIBILITY.md)
+#if UNITY_2020_1_OR_NEWER
+                    allObjects = GameObject.FindObjectsOfType<GameObject>(true);
+#else
+                    allObjects = Resources.FindObjectsOfTypeAll<GameObject>().Where(go => go.scene.IsValid()).ToArray();
+#endif
+                }
+                
+                foreach (var obj in allObjects)
+                {
+                    bool matches = true;
+                    
+                    // Check name
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        if (exactMatch)
+                        {
+                            matches &= obj.name == name;
+                        }
+                        else
+                        {
+                            // string.Contains(value, StringComparison) is netstandard2.1+; IndexOf is floor-safe (see COMPATIBILITY.md).
+                            matches &= obj.name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0;
+                        }
+                    }
+                    
+                    // Check tag
+                    if (!string.IsNullOrEmpty(tag))
+                    {
+                        matches &= obj.CompareTag(tag);
+                    }
+                    
+                    // Check layer
+                    if (layer.HasValue)
+                    {
+                        matches &= obj.layer == layer.Value;
+                    }
+                    
+                    if (matches)
+                    {
+                        results.Add(obj);
+                    }
+                }
+                
+                // F2: cap the RESPONSE size so a big legacy scene can't blow the 1MB frame budget.
+                int total = results.Count;
+                bool truncated = total > limit;
+                var capped = truncated ? results.Take(limit).ToList() : results;
+
+                // Convert results to data
+                var resultData = capped.Select(obj => new
+                {
+                    id = obj.GetInstanceID(),
+                    name = obj.name,
+                    path = GetGameObjectPath(obj),
+                    tag = obj.tag,
+                    layer = obj.layer,
+                    isActive = obj.activeSelf,
+                    transform = new
+                    {
+                        position = new { x = obj.transform.position.x, y = obj.transform.position.y, z = obj.transform.position.z },
+                        rotation = new { x = obj.transform.rotation.eulerAngles.x, y = obj.transform.rotation.eulerAngles.y, z = obj.transform.rotation.eulerAngles.z },
+                        scale = new { x = obj.transform.localScale.x, y = obj.transform.localScale.y, z = obj.transform.localScale.z }
+                    }
+                }).ToList();
+                
+                return HandlerOutcome.Ok(new
+                {
+                    count = resultData.Count,
+                    total = total,
+                    truncated = truncated,
+                    limit = limit,
+                    objects = resultData
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to find GameObjects: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Deletes GameObject(s)
+        /// </summary>
+        public static HandlerOutcome DeleteGameObject(JObject parameters)
+        {
+            try
+            {
+                if (EditorApplication.isPlaying)
+                    return HandlerOutcome.Fail("delete_gameobject refuses in play mode — scene changes evaporate on stop.", "PLAY_MODE");
+                string path = parameters["path"]?.ToString();
+                string[] paths = parameters["paths"]?.ToObject<string[]>();
+                bool includeChildren = parameters["includeChildren"]?.ToObject<bool>() ?? true;
+
+                // Validate input
+                if (string.IsNullOrEmpty(path) && (paths == null || paths.Length == 0))
+                {
+                    return HandlerOutcome.Fail("Either 'path' or 'paths' parameter is required", "VALIDATION_ERROR");
+                }
+                
+                // Collect all paths
+                List<string> allPaths = new List<string>();
+                if (!string.IsNullOrEmpty(path))
+                {
+                    allPaths.Add(path);
+                }
+                if (paths != null)
+                {
+                    allPaths.AddRange(paths);
+                }
+                
+                // Find and delete GameObjects
+                List<string> deleted = new List<string>();
+                List<string> notFound = new List<string>();
+                List<string> failed = new List<string>();
+
+                foreach (string objPath in allPaths)
+                {
+                    GameObject obj = FindGameObjectStageAware(objPath);
+                    if (obj == null) { notFound.Add(objPath); continue; }
+                    try
+                    {
+                        Undo.DestroyObjectImmediate(obj);
+                        deleted.Add(objPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        // e.g. a prefab-instance CHILD ("Destroying a GameObject that is part of a Prefab instance is
+                        // not allowed") — record it per-item instead of throwing to the outer catch AFTER some were
+                        // already deleted (partial mutation reported as total failure). (Bug hunt Mut-7.)
+                        failed.Add($"{objPath}: {ex.Message}");
+                    }
+                }
+
+                // round-6 #4: a delete that changed NOTHING is an error, not a "success" that deleted 0 (audits ok:false,
+                // consistent with delete_asset). A partial delete (some found+deleted) stays a success + reports the rest.
+                if (deleted.Count == 0)
+                {
+                    if (failed.Count > 0)
+                        return HandlerOutcome.Fail($"Deleted nothing — {failed.Count} could not be deleted: {string.Join("; ", failed)}", "INVALID_STATE",
+                            details: new { failed = failed, notFound = notFound });
+                    if (notFound.Count > 0)
+                        return HandlerOutcome.Fail($"No GameObject(s) found to delete: {string.Join(", ", notFound)}", "NOT_FOUND",
+                            details: new { notFound = notFound, notFoundCount = notFound.Count });
+                }
+
+                return HandlerOutcome.Ok(new
+                {
+                    deletedCount = deleted.Count,
+                    deleted = deleted,
+                    notFound = notFound,
+                    notFoundCount = notFound.Count,
+                    failed = failed,
+                    failedCount = failed.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to delete GameObject: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Gets the scene hierarchy
+        /// </summary>
+        public static HandlerOutcome GetHierarchy(JObject parameters)
+        {
+            try
+            {
+                bool includeInactive = parameters["includeInactive"]?.ToObject<bool>() ?? true;
+                int maxDepth = parameters["maxDepth"]?.ToObject<int>() ?? -1;
+                bool includeComponents = parameters["includeComponents"]?.ToObject<bool>() ?? false;
+                int maxNodes = parameters["maxNodes"]?.ToObject<int>() ?? 1000;
+                if (maxNodes <= 0) maxNodes = 1000;
+
+                // Collect the scenes to dump: the open prefab stage's preview scene if a prefab is open (its contents
+                // are NOT in any loaded scene), else ALL loaded scenes (multi-scene / additive setups), not just the
+                // active one — matching find_gameobject, which already spans every loaded scene. Single-scene projects
+                // are unaffected (one loaded scene → identical output). (round-6 #3 / #10)
+                var stageScene = AssetManagementHandler.GetOpenPrefabStageScene();
+                var scenes = new List<UnityEngine.SceneManagement.Scene>();
+                string primarySceneName;
+                if (stageScene.HasValue)
+                {
+                    scenes.Add(stageScene.Value);
+                    primarySceneName = stageScene.Value.name;
+                }
+                else
+                {
+                    primarySceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                    for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+                    {
+                        var s = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+                        if (s.isLoaded) scenes.Add(s);
+                    }
+                }
+
+                // Build hierarchy. F2: a node budget caps the RESPONSE so a big legacy scene can't blow the 1MB
+                // frame budget (maxDepth bounds depth, not total breadth). Each top-level root is tagged with its
+                // `scene` so multi-scene roots are disambiguated (paths alone can collide across loaded scenes).
+                var activeSceneForFlag = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                var budget = new int[] { maxNodes };
+                List<object> hierarchy = new List<object>();
+                var loadedScenes = new List<object>();
+                foreach (var scene in scenes)
+                {
+                    int before = hierarchy.Count;
+                    foreach (var root in scene.GetRootGameObjects())
+                    {
+                        if (!includeInactive && !root.activeInHierarchy)
+                            continue;
+                        if (budget[0] <= 0) break;
+                        var node = BuildHierarchyNode(root, 0, maxDepth, includeInactive, includeComponents, budget);
+                        if (node is Dictionary<string, object> dict) dict["scene"] = scene.name;
+                        hierarchy.Add(node);
+                    }
+                    loadedScenes.Add(new { name = scene.name, isActive = scene == activeSceneForFlag, rootCount = hierarchy.Count - before });
+                }
+                bool truncated = budget[0] <= 0; // budget exhausted -> there may be more
+
+                return HandlerOutcome.Ok(new
+                {
+                    sceneName = primarySceneName,    // back-compat: the active (or open-stage) scene
+                    loadedScenes = loadedScenes,     // round-6 #3: every dumped scene + its root count (1 entry single-scene)
+                    objectCount = hierarchy.Count,
+                    truncated = truncated,
+                    maxNodes = maxNodes,
+                    hierarchy = hierarchy
+                });
+            }
+            catch (Exception ex)
+            {
+                return HandlerOutcome.Fail($"Failed to get hierarchy: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Builds a hierarchy node for a GameObject
+        /// </summary>
+        private static object BuildHierarchyNode(GameObject obj, int currentDepth, int maxDepth, bool includeInactive, bool includeComponents, int[] budget)
+        {
+            budget[0]--; // count this node against the response budget (F2)
+            var node = new Dictionary<string, object>
+            {
+                ["name"] = obj.name,
+                ["path"] = GetGameObjectPath(obj),
+                ["isActive"] = obj.activeSelf,
+                ["tag"] = obj.tag,
+                ["layer"] = obj.layer,
+                ["transform"] = new
+                {
+                    position = new { x = obj.transform.position.x, y = obj.transform.position.y, z = obj.transform.position.z },
+                    rotation = new { x = obj.transform.rotation.eulerAngles.x, y = obj.transform.rotation.eulerAngles.y, z = obj.transform.rotation.eulerAngles.z },
+                    scale = new { x = obj.transform.localScale.x, y = obj.transform.localScale.y, z = obj.transform.localScale.z }
+                }
+            };
+            
+            // Add components if requested
+            if (includeComponents)
+            {
+                var components = obj.GetComponents<Component>();
+                var componentList = new List<string>();
+                foreach (var comp in components)
+                {
+                    if (comp != null)
+                    {
+                        componentList.Add(comp.GetType().Name);
+                    }
+                }
+                node["components"] = componentList;
+            }
+            
+            // Add children if within depth limit
+            if (maxDepth < 0 || currentDepth < maxDepth)
+            {
+                List<object> children = new List<object>();
+                foreach (Transform child in obj.transform)
+                {
+                    if (!includeInactive && !child.gameObject.activeInHierarchy)
+                        continue;
+                    if (budget[0] <= 0) break; // F2: response budget exhausted
+
+                    children.Add(BuildHierarchyNode(child.gameObject, currentDepth + 1, maxDepth, includeInactive, includeComponents, budget));
+                }
+                
+                if (children.Count > 0)
+                {
+                    node["children"] = children;
+                }
+            }
+            
+            return node;
+        }
+    }
+}

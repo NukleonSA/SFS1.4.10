@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f25be93102ca8a8934ad57491e0dd94, type: 3}
+  m_Name: Side Parachute
+  m_EditorClassIdentifier:
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: 降落伞
+  description: '/用于着陆的降落伞。'
+  prefab: {fileID: 4243736805655561, guid: 8123b7747df2eb647b8a933458bee5aa, type: 2}
+  breakVelocity: 5
+  hitbox:
+  - hitboxPoints:
+    - {x: 0.13, y: 0, z: 0.13}
+    - {x: 0.13, y: 0.96, z: 0.13}
+    hitboxOnly: 0
+  attachmentSurfaces:
+  - switchName:
+    size: {x: 0, y: 0.96}
+    start: {x: 0, y: 0}
+    fuelFlow: 0
+  switchPoints: []
+  dragMultiplier: 1
+  dragSurfaces:
+  - surfaceId: -1
+    point: 1
+    angleDeg: 0
+    angleRad: 0
+    size: 0.1
+  switchData:
+    parent: {fileID: 11400000}
+    variables: []
+    outputs: []
+  skins:
+    parent: {fileID: 11400000}
+    skins: []
+    paths: []
+  centerOfRotation: {x: 0.25, y: 0.5}
+  depth: 0
+  pickGridScale: 0.6
+  flip2stickX: 1
+  flip2stickY: 0
+  pickOffset: {x: 0, y: 1}
+  inFull: 0
+  oldName: []
