@@ -1,9 +1,21 @@
 # 远航深洋
 
-Spaceflight Simulator 1.4 的**高刷新率适配**与**画质增强**工程。
+> [!WARNING]
+> **社区版免责声明**
+>
+> 本工程为**非官方社区版本**，由社区开发者独立完成，与 Spaceflight Simulator 的开发者
+> （Team Curiosity / Stefo Mai Morojna）及任何官方渠道**没有任何关联**，也未获得官方授权或认可。
+>
+> - **完全免费** —— 仅供学习、研究与个人使用，**严禁任何形式的倒卖、付费销售或二次打包出售**。
+> - **版权归属** —— Spaceflight Simulator 及其全部美术、音频、代码资源版权归原作者所有。
+> - **请支持正版** —— 如果你喜欢这款游戏，请通过官方渠道购买。
+> - 使用本工程所产生的一切后果，由使用者自行承担。
 
-本项目基于 Spaceflight Simulator 1.4.06 的逆向工程，将工程迁移至 Unity 2022.3.62f3c1，重点解决
-Android 高刷新率屏幕（90 / 120 Hz）上的帧率适配问题，并还原原版着色器、修正星球渲染与界面文本。
+Spaceflight Simulator 1.4 的原生 64 位移植和内容扩展。
+
+本项目基于 Spaceflight Simulator 1.4.06 的逆向工程，将工程迁移至 Unity 2022.3.62f3c1，
+完成**原生 64 位重建**，并在此之上进行内容扩展：高刷新率适配、着色器还原、界面文本完善
+与场景渲染修复。
 
 ## 工程信息
 
@@ -11,13 +23,32 @@ Android 高刷新率屏幕（90 / 120 Hz）上的帧率适配问题，并还原�
 |---|---|
 | Unity 版本 | 2022.3.62f3c1 (LTS) |
 | 原版基础 | Spaceflight Simulator 1.4.06（原工程 Unity 2017.4.1f1） |
+| 目标架构 | **ARM64**（`arm64-v8a`，`AndroidTargetArchitectures: 2`） |
+| 原版架构 | `armeabi-v7a` / `x86`（均为 32 位） |
 | 产品名 | 远航深洋 |
 | 版本号 | 1.4.10 |
-| 目标平台 | Android (arm64-v8a) |
+| SDK | minSdk 22 / targetSdk 30 |
 
 ## 主要改动
 
-### 一、高刷新率适配（核心）
+### 一、原生 64 位移植
+
+原版 APK 只提供 32 位原生库，**完全没有 `arm64-v8a`**：
+
+| 原版 APK 内的 native 库 | 架构 |
+|---|---|
+| `lib/armeabi-v7a/libunity.so`、`libmono.so`、`libmain.so` 等 | **ARM 32 位** |
+| `lib/x86/libunity.so`、`libmono.so`、`libmain.so` 等 | **x86 32 位** |
+
+也就是说，在 64 位设备上原版始终运行在 32 位兼容层里。本工程将整包重建为 64 位目标
+（`AndroidTargetArchitectures: 2` = ARM64），并从 Unity 2017.4.1f1 升级到 2022.3.62f3c1。
+
+**意义**
+- 摆脱 32 位兼容层，直接以 arm64 原生运行
+- 在**仅支持 64 位**的设备上可以正常安装运行 —— 32 位包在这些机型上会被系统直接拒绝安装
+- 64 位进程拥有更大的虚拟地址空间，对零件数量多、结构复杂的存档更友好
+
+### 二、高刷新率适配（核心）
 
 原版只有 30 / 60 两档帧率，且在高刷屏上会被系统的自适应刷新策略压制。本工程实现
 **30 / 60 / 90 / 120** 四档可选帧率。
@@ -53,7 +84,7 @@ AndroidJNI.CallVoidMethod(tx, AndroidJNI.GetMethodID(txClass, "apply", "()V"), n
 **已知限制**：该机型面板最低档为 60 Hz，系统不存在 30 Hz 显示模式，30 fps 由 `targetFrameRate`
 在 60 Hz 面板上按 60/2 分频实现（与原版机制一致）。
 
-### 二、着色器还原
+### 三、着色器还原
 
 原版着色器在 APK 中是编译后的 GLSL 二进制。本工程将其提取并逐行还原：
 
@@ -70,14 +101,14 @@ APK -> Shader.m_ParsedForm -> m_SubShaders[0].m_Passes[0].progFragment.m_SubProg
 
 `Sprites_Icon.shader` 的原版 GLSL 已存档，工程内目前仍为模板。
 
-### 三、界面与文本
+### 四、界面与文本
 
 - 场景内 148 条文本完成校对：英文 0 条、含多余空格的中文 0 条（仅保留 "SFS"）
 - 主页文本以 APK 为准；「制作人员」改为「团队」，内容取官方团队名单
 - 修正 Unity YAML 单引号不解析换行转义的问题（相关文本改用双引号）
 - 占位文本按原版置空；Text Shade 隐藏（`m_IsActive: 0`）
 
-### 四、场景与渲染修复
+### 五、场景与渲染修复
 
 - **星球贴图透明/可见背景**：修正 mesh UV（`GenerateMesh` 的 uv/uv2/uv3 语义）、
   `LowRezPlanet.localScale`、相机 `cullingMask`、渲染队列与深度状态
@@ -133,6 +164,7 @@ Packages/                              包依赖清单
 ## 声明
 
 - 本项目为**非官方社区项目**，与 Spaceflight Simulator 的开发者（Team Curiosity / Stefo Mai Morojna）无任何关联
+- 本工程**完全免费**，严禁倒卖、付费销售或二次打包出售
 - Spaceflight Simulator 及其美术、音频、代码资源版权归原作者所有
 - 本工程基于对游戏资源的逆向分析，仅供学习、研究与 mod 开发使用
 - 请支持正版
