@@ -54,9 +54,6 @@ MonoBehaviour:
   centerOfRotation: {x: 0.5, y: 0.5}
   depth: 0
   pickGridScale: 0.65
-  flip2stickX: 0
-  flip2stickY: 0
   pickOffset: {x: 0, y: 0.6}
-  inFull: 0
   oldName:
   - Wheel 2x2

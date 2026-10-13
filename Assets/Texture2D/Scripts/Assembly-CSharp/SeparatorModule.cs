@@ -90,14 +90,6 @@ public class SeparatorModule : Module
 			part.vessel.partsManager.rb2d.AddForceAtPosition(-vector, relativePoint);
 		}
 	}
-
-	public void ApplyForce()
-	{
-		Vector2 position = part.vessel.partsManager.transform.TransformPoint(base.transform.localPosition + part.centerOfMass * part.orientation);
-		Vector2 force = Quaternion.Euler(0f, 0f, base.transform.rotation.eulerAngles.z) * new Vector2(separationForce.x * (float)part.orientation.x, separationForce.y * (float)part.orientation.y);
-		part.vessel.partsManager.rb2d.AddForceAtPosition(force, position);
-	}
-
 	public static void TransferJoints(Part fromPart, int transferSurfaceId, Part toPart, int toSurfaceId)
 	{
 		for (int i = 0; i < fromPart.joints.Count; i++)

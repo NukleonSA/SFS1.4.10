@@ -2,8 +2,6 @@ using System;
 
 public static class Kepler
 {
-	public const double Tau = Math.PI * 2.0;
-
 	private static int maxIterations = 50;
 
 	private static double tolerance = 1E-05;
@@ -165,20 +163,6 @@ public static class Kepler
 		double num3 = Math.Log(num2 + Math.Sqrt(num2 * num2 - 1.0));
 		return (e * Math.Sinh(num3) - num3) * (double)Math.Sign(trueAnomaly);
 	}
-
-	public static double GetSemiMajorAxis(double p, double e)
-	{
-		if (e > 1.0)
-		{
-			return (0.0 - p) / (e - 1.0);
-		}
-		if (e < 1.0)
-		{
-			return p / (1.0 - e);
-		}
-		return double.PositiveInfinity;
-	}
-
 	private static double NewtonElliptical(double M, double e, int count)
 	{
 		double num = M;

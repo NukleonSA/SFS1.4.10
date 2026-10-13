@@ -58,10 +58,6 @@ namespace NewBuildSystem
 			{
 				return null;
 			}
-			if (pickList.Value[selectedListId].parts[num3].inFull && !Ref.hasPartsExpansion)
-			{
-				return null;
-			}
 			Vector2 vector2 = new Vector2(0f, 2f);
 			Ref.inputController.PlayClickSound(0.2f);
 			return new HoldingPart(vector2 - pickList.Value[selectedListId].parts[num3].centerOfRotation * orientation, new PlacedPart(null, Vector2.zero, orientation.DeepCopy(), false, 0, pickList.Value[selectedListId].parts[num3], new List<string>()));
@@ -129,10 +125,9 @@ namespace NewBuildSystem
 					if (num <= pickList.Value[selectedListId].parts.Length - 1)
 					{
 						PartData partData = pickList.Value[selectedListId].parts[num];
-						bool flag = !partData.inFull || Ref.hasPartsExpansion;
 						Vector2 vector = new Vector2((float)i + 0.5f, (float)(-j) - 0.5f) - partData.centerOfRotation * orientation * partData.pickGridScale;
 						Vector2 vector2 = Vector2.one * partData.pickGridScale;
-						Transform transform = PartGrid.LoadIcon(partData, orientation, 0, vector, vector2, base.transform, 50, new Color(1f, 1f, 1f, (!flag) ? 0.5f : 1f), false);
+						Transform transform = PartGrid.LoadIcon(partData, orientation, 0, vector, vector2, base.transform, 50, Color.white, false);
 						Utility.ApplySwitchesToIcon(transform, partData, Utility.GetKeys(partData, Utility.Location.pick, orientation, new bool[0], new bool[0]));
 						icons.Add(transform.gameObject);
 						transform.localScale *= partData.pickGridScale;

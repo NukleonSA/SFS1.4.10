@@ -6,14 +6,10 @@ RuntimeInitializeOnLoadManager:
   m_AssemblyNames:
   - Sirenix.Serialization
   - Sirenix.Utilities
-  - UnityEngine.Advertisements
-  - UnityEditor.Advertisements
   m_NamespaceNames:
   - Sirenix.Serialization
   - Sirenix.Serialization.Utilities
   - Sirenix.Utilities
-  - UnityEngine.Advertisements
-  - UnityEditor.Advertisements
   m_ClassInfos:
   - m_AssemblyNameIndex: 0
     m_NamespaceIndex: 0
@@ -33,18 +29,6 @@ RuntimeInitializeOnLoadManager:
     m_NumOfMethods: 1
     m_MethodIndex: 2
     m_IsUnityClass: 0
-  - m_AssemblyNameIndex: 2
-    m_NamespaceIndex: 3
-    m_ClassName: Advertisement
-    m_NumOfMethods: 1
-    m_MethodIndex: 3
-    m_IsUnityClass: 0
-  - m_AssemblyNameIndex: 3
-    m_NamespaceIndex: 4
-    m_ClassName: UnityAdsEditor
-    m_NumOfMethods: 1
-    m_MethodIndex: 4
-    m_IsUnityClass: 0
   m_ClassMethodInfos:
   - m_ClassIndex: 0
     m_MethodName: InitializeRuntime
@@ -55,13 +39,7 @@ RuntimeInitializeOnLoadManager:
   - m_ClassIndex: 2
     m_MethodName: EnsureLoaded
     m_OrderNumber: 0
-  - m_ClassIndex: 3
-    m_MethodName: LoadRuntime
-    m_OrderNumber: 0
-  - m_ClassIndex: 4
-    m_MethodName: EditorOnLoad
-    m_OrderNumber: 0
-  m_BeforeUnityMethodExecutionOrders: 0300000004000000
+  m_BeforeUnityMethodExecutionOrders: 
   m_AfterUnityMethodExecutionOrders:
   m_BeforeMethodExecutionOrders: 000000000100000002000000
   m_AfterMethodExecutionOrders:

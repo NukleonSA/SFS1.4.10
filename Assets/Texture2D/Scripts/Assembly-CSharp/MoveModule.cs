@@ -150,23 +150,6 @@ public class MoveModule : Module
 		targetTime.floatValue = newTargetTime;
 		base.enabled = true;
 	}
-
-	public void AddToTargetTime(float change)
-	{
-		targetTime.floatValue += change;
-		base.enabled = true;
-	}
-
-	public void AddToTargetTimeClamped(string data)
-	{
-		string[] array = data.Split(","[0]);
-		if (array.Length == 3)
-		{
-			targetTime.floatValue = Mathf.Clamp(targetTime.floatValue + float.Parse(array[0]), float.Parse(array[1]), float.Parse(array[2]));
-			base.enabled = true;
-		}
-	}
-
 	public void SetTime(float newTime)
 	{
 		time.floatValue = newTime;

@@ -408,19 +408,6 @@ public class Part : MonoBehaviour
 		}
 		return false;
 	}
-
-	public bool HasFairingModule()
-	{
-		for (int i = 0; i < modules.Length; i++)
-		{
-			if (modules[i] is SplitModule)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
 	public bool HasDockingPortModule()
 	{
 		for (int i = 0; i < modules.Length; i++)

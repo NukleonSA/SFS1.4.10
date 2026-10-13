@@ -1,4 +1,4 @@
-﻿using Assets.Scripts.Save;
+using Assets.Scripts.Save;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -24,10 +24,6 @@ public class MainMenu : MonoBehaviour
 
 	public CustomEvent openTutorial;
 
-	public CustomEvent openSalePage;
-
-	public GameObject buyPartsExpansionButton;
-
 	private void Start()
 	{
 		if (!CanResumeGame())
@@ -40,18 +36,7 @@ public class MainMenu : MonoBehaviour
 			openTutorial.InvokeEvenets();
 			Ref.openTutorial = false;
 		}
-		buyPartsExpansionButton.SetActive(false);
-		SetCheatSettings();
 		ExportResoures();
-	}
-
-	private void LateUpdate()
-	{
-		if (Ref.openSalePage)
-		{
-			openSalePage.InvokeEvenets();
-			Ref.openSalePage = false;
-		}
 	}
 
 	public void OpenResourceFolder()
@@ -61,14 +46,6 @@ public class MainMenu : MonoBehaviour
 	public void ExportResoures()
 	{
 		AssetLoader.ExportPlanets();
-	}
-
-	public void SetCheatSettings()
-	{
-		infiniteFuelText.color = new Color(1f, 1f, 1f, (!Ref.hasPartsExpansion) ? 0.3f : 1f);
-		noDragText.color = new Color(1f, 1f, 1f, (!Ref.hasPartsExpansion) ? 0.3f : 1f);
-		unbreakablePartsText.color = new Color(1f, 1f, 1f, (!Ref.hasPartsExpansion) ? 0.3f : 1f);
-		noGravityText.color = new Color(1f, 1f, 1f, (!Ref.hasPartsExpansion) ? 0.3f : 1f);
 	}
 
 	public void BuildNewRocket()
@@ -88,21 +65,6 @@ public class MainMenu : MonoBehaviour
 	{
 		GameSaver.Quicksave quicksave = World.GetWorldByName().LoadPersistant();
 		return quicksave != null && quicksave.mainVesselId != -1;
-	}
-
-	public void OpenLinkLiftoff()
-	{
-		Application.OpenURL("https://www.youtube.com/watch?v=5uorANMdB60");
-	}
-
-	public void OpenLinkMoonLanding()
-	{
-		Application.OpenURL("https://www.youtube.com/watch?v=5RgPDlBNaN8&feature=youtu.be");
-	}
-
-	public void OpenLink(string link)
-	{
-		Application.OpenURL(link);
 	}
 
 	public void Toggle60fps()
@@ -132,38 +94,26 @@ public class MainMenu : MonoBehaviour
 
 	public void ToggleInfiniteFuel()
 	{
-		if (Ref.hasPartsExpansion)
-		{
-			Saving.ToggleSetting(Saving.SettingKey.infiniteFuel);
-			UpdateSettingText(true);
-		}
+		Saving.ToggleSetting(Saving.SettingKey.infiniteFuel);
+		UpdateSettingText(true);
 	}
 
 	public void ToggleNoDrag()
 	{
-		if (Ref.hasPartsExpansion)
-		{
-			Saving.ToggleSetting(Saving.SettingKey.noDrag);
-			UpdateSettingText(true);
-		}
+		Saving.ToggleSetting(Saving.SettingKey.noDrag);
+		UpdateSettingText(true);
 	}
 
 	public void ToggleUnbreakableParts()
 	{
-		if (Ref.hasPartsExpansion)
-		{
-			Saving.ToggleSetting(Saving.SettingKey.unbreakableParts);
-			UpdateSettingText(true);
-		}
+		Saving.ToggleSetting(Saving.SettingKey.unbreakableParts);
+		UpdateSettingText(true);
 	}
 
 	public void ToggleNoGravity()
 	{
-		if (Ref.hasPartsExpansion)
-		{
-			Saving.ToggleSetting(Saving.SettingKey.noGravity);
-			UpdateSettingText(true);
-		}
+		Saving.ToggleSetting(Saving.SettingKey.noGravity);
+		UpdateSettingText(true);
 	}
 
 	private void UpdateSettingText(bool playSound)

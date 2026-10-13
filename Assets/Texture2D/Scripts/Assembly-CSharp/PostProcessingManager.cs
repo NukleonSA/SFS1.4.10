@@ -67,9 +67,4 @@ public class PostProcessingManager : MonoBehaviour
 		Vector4 value = new Vector4(colorGrading.red / num, colorGrading.green / num, colorGrading.blue / num, 1f);
 		posProcessingMaterial.SetVector("_Multiplier", value);
 	}
-
-	public void ToogleEnabled()
-	{
-		base.enabled = !base.enabled;
-	}
 }

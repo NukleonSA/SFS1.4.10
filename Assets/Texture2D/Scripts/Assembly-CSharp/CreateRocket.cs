@@ -9,7 +9,7 @@ public class CreateRocket
 		List<PlacedPart> list = Build.Blueprint.PlacedPartSave.FromSave(toLaunch.parts);
 		for (int i = 0; i < list.Count; i++)
 		{
-			if (list[i].partData == null || list[i].partData.prefab == null || (!Ref.hasPartsExpansion && list[i].partData.inFull))
+			if (list[i].partData == null || list[i].partData.prefab == null)
 			{
 				list.RemoveAt(i);
 				i--;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Save;
-using JMtech.Main;
 using NewBuildSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -127,16 +126,9 @@ public class Ref : MonoBehaviour
 
 	public static bool openTutorial;
 
-	public static bool openSalePage;
-
 	public static bool loadLaunchedRocket;
 
 	public AudioListener MainAudioListener;
-
-	public static AudioListener mainAudioListener;
-
-	public static bool hasPartsExpansion;
-
 	public static bool infiniteFuel;
 
 	public static bool noDrag;
@@ -276,45 +268,9 @@ public class Ref : MonoBehaviour
 		}
 		return num;
 	}
-
-	public static string GetTimeString(double time)
-	{
-		int num = (int)(time / 86400.0);
-		int num2 = (int)(time / 3600.0) % 24;
-		int num3 = (int)(time / 60.0) % 60;
-		int num4 = (int)time % 60;
-		string text = string.Empty;
-		if (num > 0)
-		{
-			text = text + num + "d ";
-			if (num2 < 10)
-			{
-				text += "0";
-			}
-		}
-		if (num2 > 0 || num > 0)
-		{
-			text = text + num2 + "h ";
-			if (num3 < 10)
-			{
-				text += "0";
-			}
-		}
-		if (num3 > 0 || num2 > 0 || num > 0)
-		{
-			text = text + num3 + "m ";
-			if (num4 < 10)
-			{
-				text += "0";
-			}
-		}
-		return text + num4 + "s";
-	}
-
 	private void Awake()
 	{
 		main = this;
-		hasPartsExpansion = true;
 		infiniteFuel = Saving.LoadSetting(Saving.SettingKey.infiniteFuel);
 		noDrag = Saving.LoadSetting(Saving.SettingKey.noDrag);
 		unbreakableParts = Saving.LoadSetting(Saving.SettingKey.unbreakableParts);
@@ -326,32 +282,8 @@ public class Ref : MonoBehaviour
 		controller = Controller;
 		planetManager = PlanetManager;
 		map = Map;
-		GameTracker.Initialize();
 		SaveTranfer.Transfer();
 		AssetLoader.Initialize(false);
-		if (AdManager.ShowAds)
-		{
-			AdManager.InitializeAds();
-			AdManager.LoadFullscreenAd();
-			if (currentScene != SceneType.Game)
-			{
-			}
-		}
-	}
-
-	private void ShowBannerAd()
-	{
-		AdManager.ShowBanner();
-	}
-
-	public static void Label(float x, float y, float width, float height, Texture2D texture)
-	{
-		GUI.Label(new Rect(x, y, width, height), texture);
-	}
-
-	public static void Box(float x, float y, float width, float height, Texture2D texture)
-	{
-		GUI.Box(new Rect(x, y, width, height), texture);
 	}
 
 	public static void SaveJsonString(string jsonData, Saving.SaveKey fileName)
@@ -368,25 +300,5 @@ public class Ref : MonoBehaviour
 	public static bool FileExists(Saving.SaveKey fileName)
 	{
 		return PlayerPrefs.HasKey(fileName.ToString());
-	}
-
-	public static void DeleteFile(Saving.SaveKey fileName)
-	{
-		if (FileExists(fileName))
-		{
-			PlayerPrefs.DeleteKey(fileName.ToString());
-		}
-	}
-
-	public static float GetSizeOfWord(TextMesh text, string word)
-	{
-		float num = 0f;
-		foreach (char ch in word)
-		{
-			CharacterInfo info;
-			text.font.GetCharacterInfo(ch, out info, text.fontSize);
-			num += (float)info.advance;
-		}
-		return num;
 	}
 }

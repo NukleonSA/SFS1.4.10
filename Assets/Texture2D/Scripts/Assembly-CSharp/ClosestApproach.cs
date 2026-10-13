@@ -143,9 +143,4 @@ public static class ClosestApproach
 	{
 		return orbitA.GetPosOut(time) - orbitB.GetPosOut(time);
 	}
-
-	private static Double3 GetRelativeVelocityInTime(Orbit orbitA, Orbit orbitB, double time)
-	{
-		return orbitA.GetVelOut(time) - orbitB.GetVelOut(time);
-	}
 }

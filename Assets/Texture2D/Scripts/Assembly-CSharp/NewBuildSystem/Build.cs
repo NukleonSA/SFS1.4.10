@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Assets.Scripts.Addons.FileStructure;
 using Assets.Scripts.Save;
@@ -198,7 +198,7 @@ namespace NewBuildSystem
 		{
 			get
 			{
-				return ((!Ref.hasPartsExpansion) ? maxZoomBasic : maxZoomFull) * 3f * 3f;
+				return maxZoomFull * 3f * 3f;
 			}
 		}
 
@@ -300,7 +300,7 @@ namespace NewBuildSystem
 
 		public void PositionCameraStart()
 		{
-			Ref.main.Camera.transform.position = ((!Ref.hasPartsExpansion) ? camPosBasic : camPosExtended);
+			Ref.main.Camera.transform.position = camPosExtended;
 		}
 
 		private void LateUpdate()
@@ -308,10 +308,6 @@ namespace NewBuildSystem
 			DrawSnapPoints();
 			if (!MenuManager.EnabledMenuBack)
 			{
-				if (Input.GetKeyDown(KeyCode.M))
-				{
-					MyAnalytics.Event(MyAnalytics.Type.Test2);
-				}
 				if (Input.GetKeyDown(KeyCode.A))
 				{
 					Rotate90();
@@ -424,9 +420,8 @@ namespace NewBuildSystem
 				Vector2 position = Vector2.Lerp(partPos, snapPos, 1f - snapStrength) + (HoldingPart.isNull(holdingParts[fingerId]) ? Vector2.zero : (holdingParts[fingerId].part.partData.centerOfRotation * holdingParts[fingerId].part.orientation));
 				if (!IsInsideDiscardZone(position))
 				{
-					FlipToStick(fingerId, ref partPos, ref snapPos, touchPosWorld);
 					PlacedPart part = holdingParts[fingerId].part;
-					buildGrid.PlacePart(new PlacedPart(null, snapPos, part.orientation.DeepCopy(), true, part.skinId, part.partData, new List<string>()), Ref.hasPartsExpansion || !part.partData.inFull);
+					buildGrid.PlacePart(new PlacedPart(null, snapPos, part.orientation.DeepCopy(), true, part.skinId, part.partData, new List<string>()), true);
 				}
 				if (holdingParts[fingerId].part.partIcon != null)
 				{
@@ -449,23 +444,6 @@ namespace NewBuildSystem
 				return true;
 			}
 			return false;
-		}
-
-		private void FlipToStick(int fingerId, ref Vector2 partPos, ref Vector2 snapPos, Vector2 touchPosWorld)
-		{
-			bool flip2stickX = holdingParts[fingerId].part.partData.flip2stickX;
-			if (false)
-			{
-				PlacedPart part = holdingParts[fingerId].part;
-				float num = ConnectedSurface(part, snapPos, fingerId);
-				FlipX();
-				Vector2 snapPosition = GetSnapPosition(partPos, holdingParts[fingerId].part);
-				float num2 = ConnectedSurface(part, snapPosition, fingerId);
-				if (!(num2 > num) || buildGrid.Overlap(part, snapPosition))
-				{
-					FlipX();
-				}
-			}
 		}
 
 		private Vector2 GetSnapPosition(Vector2 partPos, PlacedPart part)
@@ -663,11 +641,6 @@ namespace NewBuildSystem
 
 		public void NextSkin()
 		{
-			if (!Ref.hasPartsExpansion)
-			{
-				MenuManager.ShowMsg("Skins are available in the Full Version");
-				return;
-			}
 			bool flag = false;
 			for (int i = 0; i < holdingParts.Length; i++)
 			{
@@ -766,12 +739,6 @@ namespace NewBuildSystem
 			{
 				Ref.LoadScene(Ref.SceneType.MainMenu);
 			}
-		}
-
-		public void OpenSalePage()
-		{
-			Ref.openSalePage = true;
-			Ref.LoadScene(Ref.SceneType.MainMenu);
 		}
 
 		public void Launch()

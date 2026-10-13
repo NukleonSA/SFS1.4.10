@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -261,16 +261,7 @@ namespace NewBuildSystem
 		public float pickGridScale = 1f;
 
 		[FoldoutGroup("Build Data", 0)]
-		public bool flip2stickX;
-
-		[FoldoutGroup("Build Data", 0)]
-		public bool flip2stickY;
-
-		[FoldoutGroup("Build Data", 0)]
 		public Vector2 pickOffset = Vector2.up;
-
-		[BoxGroup("Avalibility Data", true, false, 0)]
-		public bool inFull;
 
 		public string[] oldName;
 

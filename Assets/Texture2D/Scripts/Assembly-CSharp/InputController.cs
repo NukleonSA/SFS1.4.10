@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using NewBuildSystem;
 using UnityEngine;
-using UnityEngine.Analytics;
 using UnityEngine.UI;
 
 public class InputController : Touch
@@ -67,22 +66,16 @@ public class InputController : Touch
 	public AudioSource clickSound;
 
 	public AudioListener audioListener;
-
-	private Vector3 oldPos;
-
 	public Soundtrack soundtrackController;
 
 	public Transform resolutionReference;
 
 	public MoveModule dropdownMenuAnimation;
 
-	public string ID
-	{
-		get
-		{
-			return AnalyticsSessionInfo.userId;
-		}
-	}
+	// 性能: LateUpdate 每帧都要开关左右箭头指示子物体, 缓存引用避免反复 GetChild
+	private GameObject leftArrowIndicator;
+
+	private GameObject rightArrowIndicator;
 
 	private void Start()
 	{
@@ -116,8 +109,6 @@ public class InputController : Touch
 	}
 
 	// 把帧率设置抽出来, 供多处调用
-	private static bool sHighRefreshRequested;
-
 	public static void ApplyFrameRate()
 	{
 		int fps = Saving.LoadFps();
@@ -133,14 +124,17 @@ public class InputController : Touch
 		//       否则屏幕会一直停在 120Hz, 导致 30/60 锁不住。清除之后就完全交给 Unity。
 		if (fps > 60)
 		{
-			sHighRefreshRequested = true;
 			int targetFps = fps;
 
 			// ① Unity 官方 API: Screen.SetResolution 第 4 个参数就是 preferredRefreshRate
 			int curHz = (int)System.Math.Round(Screen.currentResolution.refreshRateRatio.value);
 			if (curHz < fps)
 			{
-				Screen.SetResolution(Screen.width, Screen.height, FullScreenMode.FullScreenWindow, fps);
+				Screen.SetResolution(Screen.width, Screen.height, FullScreenMode.FullScreenWindow, new RefreshRate
+				{
+					numerator = (uint)fps,
+					denominator = 1u
+				});
 			}
 
 			// ② 原生: 请求屏幕刷新率 / 显示模式(高刷机型真正认这些)
@@ -503,13 +497,19 @@ public class InputController : Touch
 		GetTouchInputs();
 		if (Ref.currentScene == Ref.SceneType.Game)
 		{
-			if (leftArrow.GetChild(0).gameObject.activeSelf != (horizontalAxis == -1f))
+			// 性能: 原来每帧各访问两次 GetChild(0).gameObject, 子物体是固定的, 缓存一次即可。
+			if (leftArrowIndicator == null || rightArrowIndicator == null)
 			{
-				leftArrow.GetChild(0).gameObject.SetActive(horizontalAxis == -1f);
+				leftArrowIndicator = leftArrow.GetChild(0).gameObject;
+				rightArrowIndicator = rightArrow.GetChild(0).gameObject;
 			}
-			if (rightArrow.GetChild(0).gameObject.activeSelf != (horizontalAxis == 1f))
+			if (leftArrowIndicator.activeSelf != (horizontalAxis == -1f))
 			{
-				rightArrow.GetChild(0).gameObject.SetActive(horizontalAxis == 1f);
+				leftArrowIndicator.SetActive(horizontalAxis == -1f);
+			}
+			if (rightArrowIndicator.activeSelf != (horizontalAxis == 1f))
+			{
+				rightArrowIndicator.SetActive(horizontalAxis == 1f);
 			}
 		}
 		if (Input.mouseScrollDelta.y != 0f)

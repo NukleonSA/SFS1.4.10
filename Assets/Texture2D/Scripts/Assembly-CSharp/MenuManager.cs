@@ -48,8 +48,6 @@ public class MenuManager : MonoBehaviour
 
 	public RectTransform topRightHolder;
 
-	public RectTransform bannerBackground;
-
 	public Canvas canvas;
 
 	public static bool EnabledMenuBack
@@ -63,21 +61,12 @@ public class MenuManager : MonoBehaviour
 	private void Start()
 	{
 		main = this;
-		if (!AdManager.ShowAds)
-		{
-		}
 	}
 
 	public static void ShowMsg(string msgText)
 	{
 		ShowMsg(msgText, 3.5f, true);
 	}
-
-	public void ShowMessage(string msgText)
-	{
-		ShowMsg(msgText, 3.5f, true);
-	}
-
 	public static void ShowMsg(string msgText, bool showMsg = true)
 	{
 		ShowMsg(msgText, 3.5f, showMsg);

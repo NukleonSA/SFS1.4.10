@@ -53,9 +53,6 @@ MonoBehaviour:
   centerOfRotation: {x: 0.75, y: 0.75}
   depth: 0
   pickGridScale: 0.55
-  flip2stickX: 0
-  flip2stickY: 0
   pickOffset: {x: 0, y: 0.75}
-  inFull: 1
   oldName:
   - Wheel 3x3

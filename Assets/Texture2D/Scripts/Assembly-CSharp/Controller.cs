@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Assets.Scripts.Save;
 using NewBuildSystem;
@@ -219,22 +219,14 @@ public class Controller : MonoBehaviour
 	{
 		Ref.LoadScene(Ref.SceneType.Build);
 		Ref.loadLaunchedRocket = true;
-		AdManager.ShowFullscreen();
 		World.GetWorldByName().UpdatePersistant();
 	}
 
 	public void BuildNew()
 	{
 		Ref.LoadScene(Ref.SceneType.Build);
-		AdManager.ShowFullscreen();
 		World.GetWorldByName().UpdatePersistant();
 	}
-
-	public void AskOpenTutorial()
-	{
-		OpenTutorial();
-	}
-
 	public void OpenTutorial()
 	{
 		Ref.openTutorial = true;
@@ -244,7 +236,6 @@ public class Controller : MonoBehaviour
 	public void ExitGameScene(bool showAd)
 	{
 		Ref.LoadScene(Ref.SceneType.MainMenu);
-		AdManager.ShowFullscreen();
 		World.GetWorldByName().UpdatePersistant();
 	}
 
@@ -415,7 +406,6 @@ public class Controller : MonoBehaviour
 				viewPositons /= viewPositons.magnitude / num4;
 			}
 			Ref.main.Camera.transform.position = new Vector3(mainVesselLocalPosition.x, mainVesselLocalPosition.y, 0f - cameraDistanceGame) + (Vector3)(cameraOffset + viewPositons);
-			Utility.DrawCircle(Ref.main.Camera.transform.position, num3, 40, Color.red, 0f);
 		}
 		else
 		{
@@ -446,11 +436,6 @@ public class Controller : MonoBehaviour
 		stars.transform.eulerAngles = new Vector3(0f, 0f, 100f);
 		Ref.map.UpdateCameraRotation(Ref.main.Camera.transform.localEulerAngles);
 	}
-
-	private void SomeStuff()
-	{
-	}
-
 	[Button("Take screenshot")]
 	private void A()
 	{
@@ -600,23 +585,8 @@ public class Controller : MonoBehaviour
 		}
 		if (vessel == Ref.mainVessel)
 		{
-			if (vessel.vesselAchievements.Contains("到达近地轨道.") && !Saving.LoadSetting(Saving.SettingKey.askedToRate1) && !Saving.LoadSetting(Saving.SettingKey.hasRated))
-			{
-				Saving.SaveSetting(Saving.SettingKey.askedToRate1, true);
-				AskRate();
-				CancelRecovery();
-			}
-			else if (vessel.vesselAchievements.Contains("Landed on Moon surface.") && !Saving.LoadSetting(Saving.SettingKey.askedToRate2) && !Saving.LoadSetting(Saving.SettingKey.hasRated))
-			{
-				Saving.SaveSetting(Saving.SettingKey.askedToRate2, true);
-				AskRate();
-				CancelRecovery();
-			}
-			else
-			{
-				vessel.DestroyVessel();
-				ExitGameScene(true);
-			}
+			vessel.DestroyVessel();
+			ExitGameScene(true);
 		}
 		else
 		{
@@ -646,7 +616,6 @@ public class Controller : MonoBehaviour
 				i--;
 			}
 		}
-		AdManager.ShowFullscreen();
 	}
 
 	public void DestroySelectedVessel()
@@ -710,19 +679,68 @@ public class Controller : MonoBehaviour
 		}
 	}
 
+	// 性能: 该方法每个 LateUpdate 都会执行, 原实现每次拼接 5~8 个临时字符串,
+	// 在 60/90/120fps 下持续制造 GC 垃圾(移动端会周期性掉帧)。这里做两处等价优化,
+	// 产出的文本与原实现逐字符一致:
+	//   ① 用与"显示精度"对齐的缓存键判断显示内容是否真的变化, 未变化直接返回;
+	//   ② 复用 StringBuilder, 消除 + 拼接产生的中间字符串。
+	private readonly System.Text.StringBuilder uiTextBuilder = new System.Text.StringBuilder(64);
+	private int lastUIVelocityKey = int.MinValue;
+	private long lastUIHeightKey = long.MinValue;
+	private bool lastUITerrain;
+	private string lastUICheats;
+
+	private static long GetUIHeightKey(double height)
+	{
+		if (double.IsInfinity(height) || double.IsNaN(height))
+		{
+			return long.MinValue;
+		}
+		if (height < 100.0)
+		{
+			return (long)Math.Floor(height * 10.0);
+		}
+		if (height < 10000.0)
+		{
+			return (long)Math.Floor(height);
+		}
+		if (height < 100000000.0)
+		{
+			return (long)Math.Floor(height / 100.0);
+		}
+		return (long)Math.Floor(height / 100000.0);
+	}
+
 	private void UpdateUI(double velocity, double height, bool terrainHeight)
 	{
 		float num = ((Screen.width <= Screen.height) ? 1f : ((float)Screen.height / (float)Screen.width * 1.075f)) * Mathf.Lerp((float)Screen.width / (float)Screen.height, 1.25f, 0.5f);
 		bottomLeftHolder.localScale = Vector3.one * num;
 		Vector3 localPosition = Utility.CameraRelativePosition(Ref.main.Camera.fieldOfView, new Vector3(0f, 0f, 1f));
 		bottomLeftHolder.localPosition = localPosition;
-		bool flag = velocity < 100.0;
-		string text = ((int)velocity/*cast due to constrained. prefix*/).ToString();
-		if (flag && ((int)(velocity * 10.0) % 10 != 0 || (int)velocity != 0))
+		int num2 = (int)(velocity * 10.0);
+		long uIHeightKey = GetUIHeightKey(height);
+		if (num2 == lastUIVelocityKey && uIHeightKey == lastUIHeightKey && terrainHeight == lastUITerrain && string.Equals(cheatsText, lastUICheats))
 		{
-			text = text + "." + (int)(velocity * 10.0) % 10;
+			return;
 		}
-		topRightText.text = ((!terrainHeight) ? "高度:" : "高度(地形):") + RoundUI(height) + "\n速度:" + text + "m/s" + cheatsText;
+		lastUIVelocityKey = num2;
+		lastUIHeightKey = uIHeightKey;
+		lastUITerrain = terrainHeight;
+		lastUICheats = cheatsText;
+		bool flag = velocity < 100.0;
+		uiTextBuilder.Length = 0;
+		uiTextBuilder.Append((!terrainHeight) ? "高度:" : "高度(地形):");
+		uiTextBuilder.Append(RoundUI(height));
+		uiTextBuilder.Append("\n速度:");
+		uiTextBuilder.Append((int)velocity);
+		if (flag && (num2 % 10 != 0 || (int)velocity != 0))
+		{
+			uiTextBuilder.Append('.');
+			uiTextBuilder.Append(num2 % 10);
+		}
+		uiTextBuilder.Append("m/s");
+		uiTextBuilder.Append(cheatsText);
+		topRightText.text = uiTextBuilder.ToString();
 	}
 
 	private void SetVelocityDirectionMarker(Vector2 velocity)
@@ -1026,17 +1044,5 @@ public class Controller : MonoBehaviour
 	private bool GetEnableVelocityOffset(Vessel vessel)
 	{
 		return Ref.planetManager.colliderChuncks.Count == 0;
-	}
-
-	public void AskRate()
-	{
-		MenuManager.ShowWarning("Would you like to rate or review the game? \n\n Rating the game helps me a lot as a developer. \n\n Leaving a review will also help me improve the game, as I still read a LOT of reviews each day.", new Vector2(1260f, 750f), "Rate", OpenRating, "取消", StartRecovery, 220);
-	}
-
-	public void OpenRating()
-	{
-		Application.OpenURL("https://play.google.com/store/apps/details?id=com.StefMorojna.SpaceflightSimulator");
-		Saving.SaveSetting(Saving.SettingKey.hasRated, true);
-		StartRecovery();
 	}
 }

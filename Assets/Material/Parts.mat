@@ -37,6 +37,7 @@ Material:
     m_Floats:
     - <noninit>: 0
     - _Intensity: 1.45
+    - _Opacity: 0
     m_Colors:
     - <noninit>: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}

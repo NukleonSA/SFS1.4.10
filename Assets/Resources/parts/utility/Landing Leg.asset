@@ -54,8 +54,5 @@ MonoBehaviour:
   centerOfRotation: {x: 0.25, y: 1.15}
   depth: 0
   pickGridScale: 0.4
-  flip2stickX: 1
-  flip2stickY: 0
   pickOffset: {x: 0, y: 1}
-  inFull: 0
   oldName: []

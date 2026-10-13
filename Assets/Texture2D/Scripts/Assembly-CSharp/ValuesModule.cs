@@ -50,11 +50,6 @@ public class ValuesModule : Module
 		[LabelText("On Value Change")]
 		public MethodRefHolder[] methodsHolder = new MethodRefHolder[0];
 
-		private string Draw(int index, GUIContent label)
-		{
-			GUILayout.BeginHorizontal();
-			return name;
-		}
 	}
 
 	[Serializable]

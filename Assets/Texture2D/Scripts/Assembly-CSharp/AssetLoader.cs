@@ -160,22 +160,6 @@ public class AssetLoader : MonoBehaviour
 
 	private void LoadPlanet(string planetName, string jsonData, ref Dictionary<string, Planet> planetList)
 	{
-		if (!Ref.hasPartsExpansion)
-		{
-			List<string> list = new List<string>();
-			list.Add("Sun");
-			list.Add("Mercury");
-			list.Add("Venus");
-			list.Add("Earth");
-			list.Add("Moon");
-			list.Add("Mars");
-			list.Add("Phobos");
-			list.Add("Deimos");
-			if (!list.Contains(planetName))
-			{
-				return;
-			}
-		}
 		try
 		{
 			PlanetData planetData = PlanetData.FromJson(jsonData);

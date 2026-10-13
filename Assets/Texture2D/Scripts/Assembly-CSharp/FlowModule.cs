@@ -84,12 +84,6 @@ public class FlowModule : Module
 	{
 		return true;
 	}
-
-	private void VoidStart()
-	{
-		UpdateState();
-	}
-
 	public void OnFlowChange(float empty)
 	{
 		GetSource();

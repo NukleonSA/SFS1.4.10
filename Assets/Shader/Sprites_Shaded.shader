@@ -67,16 +67,17 @@ Shader "Sprites/Shaded"
                 fixed4 c = tex2D(_MainTex, uv0);
                 fixed4 col = c * i.color;
                 fixed4 result;
-                // 可见性规则:
-                //  - UV 在 [0,1] 内 (绝大多数零件): 纹理 alpha 当遮罩 -> 图集透明边距天然隐形
-                //  - UV 越界 (整流罩背板 uv=3 -> V=1.059, 超出 Tex_White 50px 矩形):
-                //    越界处取不到有效纹素, 纹理 alpha 不可信 -> 回退用顶点 alpha
+                // alpha 来源要兼顾两者(实测都要):
+                //   1) 纹理 alpha  -> 零件贴图/图集的透明边距决定形状 (发动机、整流罩背板等依赖它)
+                //   2) 顶点 alpha  -> ApplySkin 写入的 skin.color.a, 决定玻璃类皮肤的透明度
+                // UV 越界时(整流罩背板 uv=3, 采样落到图集外)纹理 alpha 不可信, 按不透明处理
                 fixed inRange = step(0.0, uv0.x) * step(uv0.x, 1.0)
                               * step(0.0, uv0.y) * step(uv0.y, 1.0);
-                fixed baseAlpha = lerp(i.color.a, col.a, inRange);
-                // 阴影只变深、不改透明度: alpha 不乘 shadeFactor
-                result.rgb = shadeFactor * col.rgb * baseAlpha;   // 预乘 rgb
-                result.a   = baseAlpha;
+                fixed texA = lerp(1.0, col.a, inRange);
+                fixed baseAlpha = i.color.a * texA;
+                // 预乘输出(Blend One OneMinusSrcAlpha)
+                result.rgb = shadeFactor * col.rgb * baseAlpha;
+                result.a = baseAlpha;
                 return result;
             }
             ENDCG

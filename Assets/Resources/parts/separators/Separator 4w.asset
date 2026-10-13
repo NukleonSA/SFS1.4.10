@@ -271,9 +271,6 @@ MonoBehaviour:
   centerOfRotation: {x: 1, y: 0.25}
   depth: 0
   pickGridScale: 0.425
-  flip2stickX: 0
-  flip2stickY: 0
   pickOffset: {x: 0, y: 0.75}
-  inFull: 0
   oldName:
   - Separator

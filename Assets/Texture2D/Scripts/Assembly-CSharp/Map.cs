@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -189,15 +189,9 @@ public class Map : MonoBehaviour
 			component.transform.localScale = Vector3.one * (float)(Ref.map.mapPosition.z * 0.004000000189989805 / 10000.0);
 		}
 	}
-
-	public const double mapScale = 10000.0;
-
 	public const double maxZoom = 200000000000.0;
 
 	public const double minZoom = 500.0;
-
-	public const int maxPatchConics = 3;
-
 	public Material mapMaterial;
 
 	[BoxGroup("a", false, false, 0)]
@@ -470,7 +464,12 @@ public class Map : MonoBehaviour
 		float mapIconZoom = (float)(mapPosition.z / 10000.0);
 		foreach (Vessel vessel in Ref.controller.vessels)
 		{
-			vessel.mapIcon.localScale = ((!(vessel == Ref.mainVessel)) ? (Vector2.one * (0.01f * mapIconZoom)) : (Vector2.one * (0.015f * mapIconZoom)));
+			Vector3 localScale = (Vector3)((!(vessel == Ref.mainVessel)) ? (Vector2.one * (0.01f * mapIconZoom)) : (Vector2.one * (0.015f * mapIconZoom)));
+			// 性能: 捏合缩放时本方法每帧都会被调用, 值没变就不写 Transform(写入会标脏层级并传播到子物体)。
+			if (vessel.mapIcon.localScale != localScale)
+			{
+				vessel.mapIcon.localScale = localScale;
+			}
 		}
 	}
 
@@ -485,7 +484,8 @@ public class Map : MonoBehaviour
 		PositionPlanets();
 		List<Orbit> vesselOrbits = GetVesselOrbits(Ref.mainVessel);
 		List<Orbit> list = ((!(GetOtherVessel() != Ref.mainVessel)) ? new List<Orbit>() : GetVesselOrbits(GetOtherVessel()));
-		OrbitLines.DrawOrbitLines(mainLines, GetVesselOrbits(Ref.mainVessel));
+		// 性能: 主火箭轨道上面(vesselOrbits)已经算过, 原实现这里又完整解算一次; 同一帧结果相同, 直接复用。
+		OrbitLines.DrawOrbitLines(mainLines, vesselOrbits);
 		OrbitLines.DrawOrbitLines(selectedLines, list);
 		DrawDropdownMenu();
 		PositionTransferWindowMarkers((vesselOrbits.Count <= 0) ? list : vesselOrbits);
@@ -501,6 +501,11 @@ public class Map : MonoBehaviour
 			}
 		}
 	}
+
+	// 性能: DrawDropdownMenu 在 Map 视图下每帧执行, 这两个镜像 TextMesh 只查一次即可
+	private TextMesh targetButtonTextMesh;
+
+	private TextMesh followButtonTextMesh;
 
 	private void DrawDropdownMenu()
 	{
@@ -524,8 +529,14 @@ public class Map : MonoBehaviour
 			selectManager.selectIcon.localScale = Vector2.one * (selectManager.selectIconSize * (float)(mapPosition.z / 10000.0));
 			selectManager.targetButtonText.text = ((selected == target) ? "取消目标" : "设为目标");
 			selectManager.followButtonText.text = ((!(selected is Vessel) || !(selected as Vessel == followVessel)) ? "跟随" : "取消跟随");
-			selectManager.targetButtonText.transform.GetChild(0).GetComponent<TextMesh>().text = selectManager.targetButtonText.text;
-			selectManager.followButtonText.transform.GetChild(0).GetComponent<TextMesh>().text = selectManager.followButtonText.text;
+			// 性能: 这两个镜像 TextMesh 是固定子物体, 原来在 Map 视图下每帧都要 GetChild+GetComponent 两次, 改为缓存。
+			if (targetButtonTextMesh == null || followButtonTextMesh == null)
+			{
+				targetButtonTextMesh = selectManager.targetButtonText.transform.GetChild(0).GetComponent<TextMesh>();
+				followButtonTextMesh = selectManager.followButtonText.transform.GetChild(0).GetComponent<TextMesh>();
+			}
+			targetButtonTextMesh.text = selectManager.targetButtonText.text;
+			followButtonTextMesh.text = selectManager.followButtonText.text;
 			Vector2 size = selectManager.menuSize * (float)(Ref.map.mapPosition.z / 10000.0);
 			Vector2 position = (Vector2)selectManager.selectIcon.position - Utility.RotateZ(new Vector2(0f, size.y), Ref.main.Camera.transform.eulerAngles.z * ((float)Math.PI / 180f));
 			elementManager.RegisterElement(100, size, position, null);
@@ -554,7 +565,8 @@ public class Map : MonoBehaviour
 	{
 		List<Orbit> vesselOrbits = GetVesselOrbits(Ref.mainVessel);
 		List<Orbit> orbits = ((!(GetOtherVessel() != Ref.mainVessel)) ? new List<Orbit>() : GetVesselOrbits(GetOtherVessel()));
-		OrbitLines.DrawOrbitLines(mainLines, GetVesselOrbits(Ref.mainVessel));
+		// 性能: 同上, 复用 vesselOrbits, 避免同一帧重复解算主火箭轨道。
+		OrbitLines.DrawOrbitLines(mainLines, vesselOrbits);
 		OrbitLines.DrawOrbitLines(selectedLines, orbits);
 	}
 
@@ -766,10 +778,12 @@ public class Map : MonoBehaviour
 
 	private void GetEllipsePoints()
 	{
-		ellipsePoints = new Vector3[vesselOrbitLinePrefab.GetChild(0).GetComponent<LineRenderer>().positionCount];
+		// 性能: 原来是循环里每次都 GetChild(0)+GetComponent<LineRenderer>(), 提到循环外只取一次。
+		LineRenderer lineRenderer = vesselOrbitLinePrefab.GetChild(0).GetComponent<LineRenderer>();
+		ellipsePoints = new Vector3[lineRenderer.positionCount];
 		for (int i = 0; i < ellipsePoints.Length; i++)
 		{
-			ellipsePoints[i] = vesselOrbitLinePrefab.GetChild(0).GetComponent<LineRenderer>().GetPosition(i);
+			ellipsePoints[i] = lineRenderer.GetPosition(i);
 			ellipsePoints[i].y *= 0.5f;
 			ellipsePoints[i] = ellipsePoints[i].normalized;
 		}
@@ -809,17 +823,6 @@ public class Map : MonoBehaviour
 			CreateCircle(planet.mapHolder, (float)((planet.data.BASE_DATA.radius + planet.data.ATMOSPHERE_DATA.PHYSICS.height) / 10000.0), GetMapElementColor(Color.white, 0.1f), 1, "Atmosphere");
 		}
 	}
-
-	private TextMesh CreateNameIcon(string name, Transform holder)
-	{
-		Transform transform = UnityEngine.Object.Instantiate(textPrefab, holder);
-		transform.name = name + " name icon";
-		transform.GetComponent<TextMesh>().text = name;
-		transform.GetComponent<MeshRenderer>().sortingLayerName = "Map";
-		transform.GetComponent<MeshRenderer>().sortingOrder = 101;
-		return transform.GetComponent<TextMesh>();
-	}
-
 	private Transform CreateMapTerrain(Planet planet, Transform parent)
 	{
 		Transform transform = new PlanetManager.Chunck(0.0, 1.0, 0, planet.data.BASE_DATA.mapResolution, planet, base.transform, true, false).transform;

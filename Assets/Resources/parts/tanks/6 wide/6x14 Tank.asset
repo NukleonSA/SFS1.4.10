@@ -239,9 +239,6 @@ MonoBehaviour:
   centerOfRotation: {x: 1.5, y: 3.5}
   depth: 0
   pickGridScale: 0.13
-  flip2stickX: 0
-  flip2stickY: 0
   pickOffset: {x: 0, y: 1.5}
-  inFull: 0
   oldName:
   - 6x16 Tank

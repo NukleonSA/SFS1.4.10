@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Assets.Scripts.Addons.FileStructure;
 using Assets.Scripts.Save;
 using NewBuildSystem;
@@ -29,15 +29,10 @@ public class Saving : MonoBehaviour
 		disableSound = 5,
 		disableAutoRotate = 6,
 		disable60fps = 7,
-		hasPartDLC = 8,
-		hasHackedDLC = 9,
 		infiniteFuel = 10,
 		noDrag = 11,
 		unbreakableParts = 12,
 		noGravity = 13,
-		askedToRate1 = 14,
-		askedToRate2 = 15,
-		hasRated = 16,
 		transferComplete = 17
 	}
 
@@ -70,13 +65,6 @@ public class Saving : MonoBehaviour
 
 	[ShowInInspector]
 	private int page;
-
-	private const int savesPerPage = 6;
-
-	private const int saveWidth = 430;
-
-	private const int saveHeight = -70;
-
 	public object SavingReference { get; private set; }
 
 	public static string BasePath()
@@ -93,14 +81,6 @@ public class Saving : MonoBehaviour
 	{
 		return new ObjectPath(true, BasePath(), "Blueprints");
 	}
-
-	public static ObjectPath ResourcesLocation()
-	{
-		ObjectPath objectPath = new ObjectPath(true, (!Application.isEditor) ? "Resources" : "Mod Data");
-		objectPath.CreatePath();
-		return objectPath;
-	}
-
 	public static ObjectPath PlanetDataLocation()
 	{
 		return new ObjectPath(true, (!Application.isEditor) ? "Resources" : "Mod Data", "Planet Data");
@@ -149,7 +129,6 @@ public class Saving : MonoBehaviour
 	{
 		string text = ((touchKeyboard == null) ? string.Empty : touchKeyboard.text);
 		MenuManager.ShowMsg("Saving...");
-		AdManager.ShowFullscreen();
 		if (Ref.currentScene == Ref.SceneType.Build)
 		{
 			Build.Blueprint.CreateBlueprint(text, Build.main.GetBlueprint());
@@ -239,7 +218,6 @@ public class Saving : MonoBehaviour
 		if (selectedSave != -1)
 		{
 			MenuManager.ShowMsg("Loading...");
-			AdManager.ShowFullscreen();
 			string selected = GetSelected();
 			if (Ref.currentScene == Ref.SceneType.Build)
 			{
@@ -301,12 +279,6 @@ public class Saving : MonoBehaviour
 	{
 		return PlayerPrefs.GetInt(settingKey.ToString(), 0) == 1;
 	}
-
-	public static bool HasSetting(SettingKey settingKey)
-	{
-		return PlayerPrefs.HasKey(settingKey.ToString());
-	}
-
 	public static void ToggleSetting(SettingKey settingKey)
 	{
 		SaveSetting(settingKey, !LoadSetting(settingKey));

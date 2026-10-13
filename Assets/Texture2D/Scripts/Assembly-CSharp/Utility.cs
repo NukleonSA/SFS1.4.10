@@ -23,10 +23,6 @@ public static class Utility
 		{
 			get
 			{
-				if (!Ref.hasPartsExpansion)
-				{
-					return base_value;
-				}
 				return full_value;
 			}
 		}
@@ -49,33 +45,6 @@ public static class Utility
 		pick = 2,
 		held = 3
 	}
-
-	public static Vector2 GetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
-	{
-		if (p1.x == p2.x)
-		{
-			float x = p1.x;
-			Vector2 vector = p3;
-			Vector2 vector2 = p4 - vector;
-			float num = vector2.y / vector2.x;
-			float num2 = x - vector.x;
-			return new Vector2(x, vector.y + num2 * num);
-		}
-		if (p3.x == p4.x)
-		{
-			float x2 = p3.x;
-			Vector2 vector3 = p1;
-			Vector2 vector4 = p2 - vector3;
-			float num3 = vector4.y / vector4.x;
-			float num4 = x2 - vector3.x;
-			return new Vector2(x2, vector3.y + num4 * num3);
-		}
-		float num5 = (p2.y - p1.y) / (p2.x - p1.x);
-		float num6 = (p3.y - p4.y) / (p3.x - p4.x);
-		float num7 = (p1.x * num5 - p4.x * num6 + (p4.y - p1.y)) / (num5 - num6);
-		return new Vector2(num7, num5 * num7 - p1.x * num5 + p1.y);
-	}
-
 	public static bool IsInsideRange(float value, float a, float b, bool canBeInsideEdge = false)
 	{
 		if (canBeInsideEdge)
@@ -103,12 +72,6 @@ public static class Utility
 	{
 		return Math.Min(Math.Max(a1, a2), Math.Max(b1, b2)) - Math.Max(Math.Min(a1, a2), Math.Min(b1, b2));
 	}
-
-	public static bool LineOverlaps(float a1, float a2, float b1, float b2)
-	{
-		return Mathf.Max(a1, a2) - 0.01f > Mathf.Min(b1, b2) && Mathf.Max(b1, b2) - 0.01f > Mathf.Min(a1, a2);
-	}
-
 	public static float Overlap(float a1, float a2, float b1, float b2)
 	{
 		return Mathf.Min(Mathf.Max(a1, a2), Mathf.Max(b1, b2)) - Mathf.Max(Mathf.Min(a1, a2), Mathf.Min(b1, b2));
@@ -147,13 +110,6 @@ public static class Utility
 	{
 		return Mathf.Round(a * 10f) / 10f;
 	}
-
-	public static void DrawCross(Vector2 position, float size)
-	{
-		Debug.DrawRay(position + Vector2.down * size / 2f, Vector2.up * size, Color.red);
-		Debug.DrawRay(position + Vector2.left * size / 2f, Vector2.right * size, Color.red);
-	}
-
 	public static Transform GetByPath(Transform root, int[] path, bool safe = false)
 	{
 		for (int i = 0; i < path.Length; i++)
@@ -172,41 +128,11 @@ public static class Utility
 		}
 		return root;
 	}
-
-	public static int[] GetPath(Transform root, Transform location)
-	{
-		List<int> list = new List<int>();
-		while (location.parent != null)
-		{
-			for (int i = 0; i < location.parent.childCount; i++)
-			{
-				if (location.parent.GetChild(i) == location)
-				{
-					list.Add(i);
-					location = location.parent;
-					if (location == root)
-					{
-						list.Reverse();
-						return list.ToArray();
-					}
-					break;
-				}
-			}
-		}
-		return new int[0];
-	}
-
 	public static Vector2 ToDepth(Vector3 worldPos, float targetDepth)
 	{
 		Vector2 vector = Camera.main.WorldToScreenPoint(worldPos);
 		return Camera.main.ScreenToWorldPoint(new Vector3(vector.x, vector.y, targetDepth));
 	}
-
-	public static float GetDeltaV(float isp, float fullMass, float dryMass)
-	{
-		return isp * 9.8f * Mathf.Log(fullMass / dryMass);
-	}
-
 	public static string SplitLines(string textToSplit)
 	{
 		string text = string.Empty;
@@ -230,29 +156,6 @@ public static class Utility
 		return num;
 	}
 
-	public static void DrawSquare(Vector2 positon, Vector2 size, float rotation, float time, Color color)
-	{
-		Vector2 vector = positon + RotateZ(size, rotation);
-		Vector2 vector2 = positon + RotateZ(new Vector2(0f - size.x, size.y), rotation);
-		Vector2 vector3 = positon + RotateZ(-size, rotation);
-		Vector2 vector4 = positon + RotateZ(new Vector2(size.x, 0f - size.y), rotation);
-		Debug.DrawLine(vector, vector2, color, time);
-		Debug.DrawLine(vector2, vector3, color, time);
-		Debug.DrawLine(vector3, vector4, color, time);
-		Debug.DrawLine(vector4, vector, color, time);
-	}
-
-	public static void DrawBox(Vector2 posA, Vector2 posB, float time, Color color)
-	{
-		Debug.DrawLine(posA, posB, color, time);
-		Debug.DrawLine(new Vector3(posA.x, posB.y), new Vector3(posB.x, posA.y), color, time);
-		Debug.DrawLine(posB, posB, Color.red, time);
-	}
-
-	public static void DrawCircle(Vector2 position, float radius, int resolution, Color color, float time)
-	{
-	}
-
 	public static Vector3 CameraRelativePosition(float fieldOfView, Vector3 posPixel)
 	{
 		Vector2 vector = new Vector2((posPixel.x - (float)(Screen.width / 2)) / (float)Screen.height, (posPixel.y - (float)(Screen.height / 2)) / (float)Screen.height);
@@ -267,14 +170,6 @@ public static class Utility
 		float num2 = Mathf.Sin(b);
 		return new Vector2(a.x * num - a.y * num2, a.x * num2 + a.y * num);
 	}
-
-	public static double FindClossestDistanceToPoint(Double3 point, Double3 p1, Double3 p2)
-	{
-		double num = p2.x - p1.x;
-		double num2 = p2.y - p1.y;
-		return ((point.x - p1.x) * num + (point.y - p1.y) * num2) / (num * num + num2 * num2);
-	}
-
 	public static float DistanceSqrtToLine(Vector2 point, Vector2 p1, Vector2 p2)
 	{
 		float num = p2.x - p1.x;

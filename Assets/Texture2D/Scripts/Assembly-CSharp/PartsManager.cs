@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using NewBuildSystem;
 using Sirenix.OdinInspector;
@@ -280,19 +280,6 @@ public class PartsManager : MonoBehaviour
 		SortModules(GetModules(), vessel);
 		UpdateCenterOfMass();
 	}
-
-	public Part GetCenterPart()
-	{
-		for (int i = 0; i < parts.Count; i++)
-		{
-			if (parts[i].GetComponent<ControlModule>() != null)
-			{
-				return parts[i];
-			}
-		}
-		return parts[0];
-	}
-
 	private List<Module> GetModules()
 	{
 		List<Module> list = new List<Module>();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -180,36 +180,38 @@ public static class OrbitLines
 		DrawDottedLine((posA / 10000.0).toVector3, (posB / 10000.0).toVector3, planet.mapHolder.position, color);
 	}
 
+	// 性能: 该方法的顶点/索引/UV/颜色数组原本每次调用都重新分配 —— 地图视图下每帧最多十余次调用。
+	// mesh 的属性赋值会把数据拷进网格原生缓冲, 所以复用静态数组是安全的。
+	private static readonly Vector3[] dottedVertices = new Vector3[4];
+	private static readonly int[] dottedTriangles = new int[6] { 0, 1, 2, 1, 3, 2 };
+	private static readonly Vector2[] dottedUvs = new Vector2[4];
+	private static readonly Color[] dottedColors = new Color[4];
+
 	public static void DrawDottedLine(Vector3 posA, Vector3 posB, Vector3 startPos, Color color)
 	{
 		float magnitude = (posA - posB).magnitude;
 		float num = (float)(Ref.map.mapPosition.z * 0.002400000113993883 / 10000.0);
 		Mesh mesh = meshesPool[index % (meshesPool.Count - 1)];
 		index++;
-		mesh.vertices = new Vector3[4]
-		{
-			new Vector3(0f - num, 0f, 0f),
-			new Vector3(num, 0f, 0f),
-			new Vector3(0f - num, magnitude, 0f),
-			new Vector3(num, magnitude, 0f)
-		};
-		mesh.triangles = new int[6] { 0, 1, 2, 1, 3, 2 };
-		mesh.uv = new Vector2[4]
-		{
-			Vector2.zero,
-			Vector2.zero,
-			new Vector2(magnitude * 10000f / (float)Ref.map.mapPosition.z * 70f, 0f),
-			new Vector2(magnitude * 10000f / (float)Ref.map.mapPosition.z * 70f, 0f)
-		};
-		mesh.colors = new Color[4] { color, color, color, color };
+		dottedVertices[0] = new Vector3(0f - num, 0f, 0f);
+		dottedVertices[1] = new Vector3(num, 0f, 0f);
+		dottedVertices[2] = new Vector3(0f - num, magnitude, 0f);
+		dottedVertices[3] = new Vector3(num, magnitude, 0f);
+		float num2 = magnitude * 10000f / (float)Ref.map.mapPosition.z * 70f;
+		dottedUvs[0] = Vector2.zero;
+		dottedUvs[1] = Vector2.zero;
+		dottedUvs[2] = new Vector2(num2, 0f);
+		dottedUvs[3] = new Vector2(num2, 0f);
+		dottedColors[0] = color;
+		dottedColors[1] = color;
+		dottedColors[2] = color;
+		dottedColors[3] = color;
+		mesh.vertices = dottedVertices;
+		mesh.triangles = dottedTriangles;
+		mesh.uv = dottedUvs;
+		mesh.colors = dottedColors;
 		Graphics.DrawMesh(mesh, startPos + posA, Quaternion.Euler(0f, 0f, Mathf.Atan2(posA.y - posB.y, posA.x - posB.x) * 57.29578f + 90f), Ref.map.dottedLineMaterial, 5);
 	}
-
-	private static void SetCounter(Orbit orbit, double value, double trueAnomaly, Transform counter)
-	{
-		SetParentAndPosition(counter.transform, orbit.planet.mapHolder, Kepler.GetPosition(value / 10000.0, trueAnomaly, orbit.argumentOfPeriapsis).toVector3);
-	}
-
 	public static void SetParentAndPosition(Transform a, Transform parent, Vector3 localPosition)
 	{
 		if (a.parent != parent)

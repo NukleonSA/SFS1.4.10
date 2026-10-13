@@ -162,34 +162,6 @@ public static class Parser
 		a = a.Replace("||", "|");
 		return a;
 	}
-
-	public static string InsertKeys(string IN, List<string> keys)
-	{
-		string text = string.Empty;
-		string text2 = string.Empty;
-		foreach (char c in IN)
-		{
-			if (!char.IsLetterOrDigit(c))
-			{
-				if (text2 != string.Empty)
-				{
-					text += ((!keys.Contains(text2)) ? "f" : "t");
-					text2 = string.Empty;
-				}
-				text += c;
-			}
-			else
-			{
-				text2 += c;
-			}
-		}
-		if (text2 != string.Empty)
-		{
-			text += ((!keys.Contains(text2)) ? "f" : "t");
-		}
-		return text;
-	}
-
 	public static bool ProcessCode(string a)
 	{
 		string text = string.Empty;

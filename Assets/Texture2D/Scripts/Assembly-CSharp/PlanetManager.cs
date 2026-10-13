@@ -136,11 +136,6 @@ public class PlanetManager : MonoBehaviour
 			transform.parent = null;
 		}
 	}
-
-	public const float launchPadPositionX = 365f;
-
-	public const float launchPadPositionY = 25.5f;
-
 	[TableList]
 	public List<Chunck> activeChuncks;
 
@@ -162,9 +157,6 @@ public class PlanetManager : MonoBehaviour
 	public double totalDistanceMoved;
 
 	public List<LowRezPlanet> lowRezPlanets;
-
-	public const int baseChuncksCount = 50;
-
 	public void SwitchLocation(Planet newPlanet, Double3 newFocusPosition, bool showSwitchMsg, double unloadDistance)
 	{
 		Debug.Log("LOADING NEW LOCATION");

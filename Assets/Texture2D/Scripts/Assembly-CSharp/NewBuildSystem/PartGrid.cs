@@ -296,10 +296,6 @@ namespace NewBuildSystem
 		{
 			for (int i = 0; i < inactiveParts.Count; i++)
 			{
-				if (!Ref.hasPartsExpansion && inactiveParts[i].partData.inFull)
-				{
-					continue;
-				}
 				bool flag = false;
 				for (int j = 0; j < parts.Count; j++)
 				{
@@ -528,18 +524,6 @@ namespace NewBuildSystem
 			for (int i = 0; i < newParts.Count; i++)
 			{
 				newParts[i].position -= vector2;
-			}
-			if (!Ref.hasPartsExpansion)
-			{
-				for (int j = 0; j < newParts.Count; j++)
-				{
-					if (newParts[j].partData.inFull)
-					{
-						newInactiveParts.Add(newParts[j]);
-						newParts.RemoveAt(j);
-						j--;
-					}
-				}
 			}
 			parts = newParts;
 			inactiveParts = newInactiveParts;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NewBuildSystem;
 using UnityEngine;
 
@@ -37,23 +37,31 @@ public class Touch : MonoBehaviour
 		int dragingFingerCount = 0;
 		Ref.inputController.horizontalAxis = 0f;
 		Ref.inputController.rcsInput = Vector2.zero;
-		for (int i = 0; i < Input.touchCount; i++)
+		// 性能: Input.GetTouch() 是原生调用, 原实现同一帧内同一根手指要取 3~5 次。
+		// Input 的状态在帧内固定不变, 取一次存下来即可(行为完全一致)。
+		int touchCount = Input.touchCount;
+		for (int i = 0; i < touchCount; i++)
 		{
-			int fingerId = Input.GetTouch(i).fingerId;
-			if (Input.GetTouch(i).phase == TouchPhase.Ended || Input.GetTouch(i).phase == TouchPhase.Canceled)
+			UnityEngine.Touch touch = Input.GetTouch(i);
+			int fingerId = touch.fingerId;
+			TouchPhase phase = touch.phase;
+			Vector2 position = touch.position;
+			if (phase == TouchPhase.Ended || phase == TouchPhase.Canceled)
 			{
-				EndTouch(fingerId, i, Input.GetTouch(i).position);
+				EndTouch(fingerId, i, position);
 			}
-			if (Input.GetTouch(i).phase == TouchPhase.Began)
+			if (phase == TouchPhase.Began)
 			{
-				StartTouch(fingerId, i, Input.GetTouch(i).position);
+				StartTouch(fingerId, i, position);
 			}
-			StayTouch(fingerId, i, ref summedPositionDelta, ref dragingFingerCount, ref Ref.inputController.horizontalAxis, ref Ref.inputController.rcsInput);
+			StayTouch(fingerId, position, ref summedPositionDelta, ref dragingFingerCount, ref Ref.inputController.horizontalAxis, ref Ref.inputController.rcsInput);
 		}
-		if (GetTouchIdFromFingerId(zoomFinger1) != -1 && GetTouchIdFromFingerId(zoomFinger2) != -1)
+		int zoomTouchId = GetTouchIdFromFingerId(zoomFinger1);
+		int zoomTouchId2 = GetTouchIdFromFingerId(zoomFinger2);
+		if (zoomTouchId != -1 && zoomTouchId2 != -1)
 		{
 			float num = Vector2.Distance(touchesInfo[zoomFinger1].lastFingerPosPixel, touchesInfo[zoomFinger2].lastFingerPosPixel);
-			float num2 = Vector2.Distance(Input.GetTouch(GetTouchIdFromFingerId(zoomFinger1)).position, Input.GetTouch(GetTouchIdFromFingerId(zoomFinger2)).position);
+			float num2 = Vector2.Distance(Input.GetTouch(zoomTouchId).position, Input.GetTouch(zoomTouchId2).position);
 			float num3 = num / num2;
 			Ref.inputController.ApplyZoom((num3 - 1f) * 1.5f + 1f);
 		}
@@ -65,9 +73,10 @@ public class Touch : MonoBehaviour
 			}
 			Ref.inputController.ApplyDraging(summedPositionDelta / dragingFingerCount);
 		}
-		for (int j = 0; j < Input.touchCount; j++)
+		for (int j = 0; j < touchCount; j++)
 		{
-			touchesInfo[Input.GetTouch(j).fingerId].lastFingerPosPixel = Input.GetTouch(j).position;
+			UnityEngine.Touch touch2 = Input.GetTouch(j);
+			touchesInfo[touch2.fingerId].lastFingerPosPixel = touch2.position;
 		}
 	}
 
@@ -92,7 +101,8 @@ public class Touch : MonoBehaviour
 		int lastOnEmptyId = GetLastOnEmptyId(i);
 		if (lastOnEmptyId != -1)
 		{
-			zoomFinger1 = Input.GetTouch(i).fingerId;
+			// 性能: 这里取到的就是形参 fingerId, 无需再查一次原生触点
+			zoomFinger1 = fingerId;
 			zoomFinger2 = lastOnEmptyId;
 		}
 	}
@@ -133,20 +143,20 @@ public class Touch : MonoBehaviour
 		touchesInfo[fingerId].touchState = TouchState.NotTouching;
 	}
 
-	private void StayTouch(int fingerId, int i, ref Double3 summedPositionDelta, ref int dragingFingerCount, ref float horizontalAxis, ref Vector2 rcsInput)
+	private void StayTouch(int fingerId, Vector2 touchPosition, ref Double3 summedPositionDelta, ref int dragingFingerCount, ref float horizontalAxis, ref Vector2 rcsInput)
 	{
 		switch (touchesInfo[fingerId].touchState)
 		{
 		case TouchState.OnEmpty:
 			if (Ref.currentScene == Ref.SceneType.Build)
 			{
-				Vector2 deltaPixel = touchesInfo[fingerId].lastFingerPosPixel - Input.GetTouch(i).position;
-				Vector2 posWorld = Camera.main.ScreenToWorldPoint((Vector3)Input.GetTouch(i).position + Vector3.forward * (0f - Ref.main.Camera.transform.position.z));
+				Vector2 deltaPixel = touchesInfo[fingerId].lastFingerPosPixel - touchPosition;
+				Vector2 posWorld = Camera.main.ScreenToWorldPoint((Vector3)touchPosition + Vector3.forward * (0f - Ref.main.Camera.transform.position.z));
 				Ref.inputController.TouchStayEmpty(posWorld, deltaPixel, fingerId);
 			}
 			if (Ref.currentScene == Ref.SceneType.Game)
 			{
-				Vector2 vector = touchesInfo[fingerId].lastFingerPosPixel - Input.GetTouch(i).position;
+				Vector2 vector = touchesInfo[fingerId].lastFingerPosPixel - touchPosition;
 				summedPositionDelta += (Vector3)vector;
 				dragingFingerCount++;
 			}
@@ -181,7 +191,7 @@ public class Touch : MonoBehaviour
 			{
 				break;
 			}
-			float num = touchesInfo[fingerId].lastFingerPosPixel.y - Input.GetTouch(i).position.y;
+			float num = touchesInfo[fingerId].lastFingerPosPixel.y - touchPosition.y;
 			if (num == 0f || !(Ref.mainVessel != null))
 			{
 				break;

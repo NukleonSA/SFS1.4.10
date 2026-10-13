@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -259,20 +259,39 @@ public class SpriteMesh : MonoBehaviour
 				array4[i * 2] = (array4[i * 2 + 1] = (array4[i * 2 + 2] = (array4[i * 2 + 3] = ((meshPoints[i].color.a == 0f) ? color : meshPoints[i].color))));
 			}
 		}
-		Mesh mesh = new Mesh();
-		mesh.triangles = new int[0];
+		// 性能: 原实现每次 Generate 都 new 一个 Mesh 并赋给 sharedMesh, 旧 Mesh 不会被销毁
+		// (切皮肤 / 拖零件开关时可能每帧调用) —— 原生内存会一直涨到 UnloadUnusedAssets 才回收。
+		// sharedMesh 只在本方法写入、别处从不读取, 因此改为"复用同一个 Mesh, 每次清空重填"。
+		if (cachedMesh == null)
+		{
+			cachedMesh = new Mesh();
+		}
+		if (cachedMeshFilter == null)
+		{
+			cachedMeshFilter = base.transform.GetComponent<MeshFilter>();
+		}
+		if (cachedMeshRenderer == null)
+		{
+			cachedMeshRenderer = base.gameObject.GetComponent<MeshRenderer>();
+		}
+		Mesh mesh = cachedMesh;
+		mesh.Clear();
 		mesh.vertices = array;
 		mesh.triangles = list.ToArray();
 		mesh.SetUVs(0, new List<Vector3>(array2));
 		mesh.SetUVs(1, new List<Vector3>(array3));
 		mesh.colors = array4;
-		base.transform.GetComponent<MeshFilter>().sharedMesh = mesh;
-
-
+		cachedMeshFilter.sharedMesh = mesh;
 		mesh.RecalculateNormals();
-		base.gameObject.GetComponent<MeshRenderer>().sortingLayerName = SortingLayerName;
-		base.gameObject.GetComponent<MeshRenderer>().sortingOrder = SortingOrder;
+		cachedMeshRenderer.sortingLayerName = SortingLayerName;
+		cachedMeshRenderer.sortingOrder = SortingOrder;
 	}
+
+	private Mesh cachedMesh;
+
+	private MeshFilter cachedMeshFilter;
+
+	private MeshRenderer cachedMeshRenderer;
 
 	private float GetEndUV()
 	{
