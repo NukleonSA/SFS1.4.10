@@ -123,12 +123,18 @@ APK -> Shader.m_ParsedForm -> m_SubShaders[0].m_Passes[0].progFragment.m_SubProg
 
 SFS 1.5 是完全重写的新代码，无法整体移植，因此按模块从其中提取资源与机制：
 
+**已生效**
+
 - **建造网格** —— `Assets/Resources/15build/`（`Build_Background` / `Dots` / `Pattern_Squares`
   贴图，`UnlimitedGrid15` / `UnlimitedSolid` 材质），配合新增的 `SFS_BuildGrid15.shader`
   与 `SFS_SolidQuad.shader`
 - **无限建造区域** —— `UnlimitedBuildArea.cs`
-- **再入燃烧效果** —— `Burn Gradient.png`、`Burnmark.png` 贴图，以及音效
-  `AirBurn.wav`、`AirFlow #207.wav`、`Airflow #196.wav`
+
+**资源已导入，效果尚未生效**
+
+- **再入燃烧效果** —— `Burn Gradient.png`、`Burnmark.png` 贴图与音效 `AirBurn.wav`、
+  `AirFlow #207.wav`、`Airflow #196.wav` 已导入工程，但燃烧效果**尚未在实际运行中生效**，
+  暂不计入本版本的移植成果。
 
 ## 工程结构
 
