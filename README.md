@@ -1,4 +1,25 @@
-# 远航深洋
+<h1 align="center">
+  <img src="Assets/Texture2D/AppIcon.png" width="200" alt="远航深洋" />
+  <br />
+  远航深洋
+</h1>
+
+<p align="center">
+  <strong>Spaceflight Simulator 1.4 的原生 64 位移植和内容扩展</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/NukleonSA/SFS1.4.10/stargazers"><img src="https://img.shields.io/github/stars/NukleonSA/SFS1.4.10?style=for-the-badge&label=STARS&color=yellow" alt="Stars" /></a>
+  <a href="https://github.com/NukleonSA/SFS1.4.10/releases"><img src="https://img.shields.io/github/v/release/NukleonSA/SFS1.4.10?style=for-the-badge&label=RELEASE&color=blue" alt="Release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-%E7%A4%BE%E5%8C%BA%E7%89%88-blue?style=for-the-badge" alt="License" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/PLATFORM-Android%20arm64-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/UNITY-2022.3.62f3c1-000000?style=for-the-badge&logo=unity" alt="Unity" />
+  <a href="https://github.com/NukleonSA/SFS1.4.10/issues"><img src="https://img.shields.io/github/issues/NukleonSA/SFS1.4.10?style=for-the-badge&color=green" alt="Issues" /></a>
+  <img src="https://img.shields.io/github/last-commit/NukleonSA/SFS1.4.10?style=for-the-badge" alt="Last commit" />
+</p>
 
 > [!WARNING]
 > **社区版免责声明**
@@ -14,8 +35,6 @@
 > - 使用本工程所产生的一切后果，由使用者自行承担。
 
 **本项目使用 DeepSeek AI 开发。**
-
-Spaceflight Simulator 1.4 的原生 64 位移植和内容扩展。
 
 本项目基于 Spaceflight Simulator 1.4.06 的逆向工程，将工程迁移至 Unity 2022.3.62f3c1，
 完成**原生 64 位重建**，并在此之上进行内容扩展：移除广告与内购模块、移植 1.5 建造网格与
