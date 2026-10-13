@@ -55,3 +55,7 @@ desktop.ini
 # Monotype 商业字体（不可再分发）；思源黑体为 SIL OFL，保留
 /Assets/Font/ARIALBD.ttf
 /Assets/Font/ARIALBD.ttf.meta
+
+# ===== 运行时存档数据（游戏运行时生成，不纳入版本管理）=====
+*.qks
+*.qks.meta
