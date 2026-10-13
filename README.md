@@ -18,8 +18,8 @@
 Spaceflight Simulator 1.4 的原生 64 位移植和内容扩展。
 
 本项目基于 Spaceflight Simulator 1.4.06 的逆向工程，将工程迁移至 Unity 2022.3.62f3c1，
-完成**原生 64 位重建**，并在此之上进行内容扩展：高刷新率适配、着色器还原、界面文本完善
-与场景渲染修复。
+完成**原生 64 位重建**，并在此之上进行内容扩展：移除广告与内购模块、移植 1.5 建造网格与
+再入燃烧效果、高刷新率适配、着色器还原、界面文本完善与场景渲染修复。
 
 ## 工程信息
 
@@ -118,6 +118,17 @@ APK -> Shader.m_ParsedForm -> m_SubShaders[0].m_Passes[0].progFragment.m_SubProg
   `LowRezPlanet.localScale`、相机 `cullingMask`、渲染队列与深度状态
 - **帧率依赖修正**：`PlanetManager.totalDistanceMoved += GetMaxVesselsVelocity()*Time.deltaTime + 6.0*Time.deltaTime`
   （原为每帧固定 +0.1，与帧率绑定，高刷下会导致物理表现异常）
+
+### 六、移植 1.5 内容
+
+SFS 1.5 是完全重写的新代码，无法整体移植，因此按模块从其中提取资源与机制：
+
+- **建造网格** —— `Assets/Resources/15build/`（`Build_Background` / `Dots` / `Pattern_Squares`
+  贴图，`UnlimitedGrid15` / `UnlimitedSolid` 材质），配合新增的 `SFS_BuildGrid15.shader`
+  与 `SFS_SolidQuad.shader`
+- **无限建造区域** —— `UnlimitedBuildArea.cs`
+- **再入燃烧效果** —— `Burn Gradient.png`、`Burnmark.png` 贴图，以及音效
+  `AirBurn.wav`、`AirFlow #207.wav`、`Airflow #196.wav`
 
 ## 工程结构
 
