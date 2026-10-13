@@ -17,8 +17,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/PLATFORM-Android%20arm64-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/UNITY-2022.3.62f3c1-000000?style=for-the-badge&logo=unity" alt="Unity" />
-  <a href="https://github.com/NukleonSA/SFS1.4.10/issues"><img src="https://img.shields.io/github/issues/NukleonSA/SFS1.4.10?style=for-the-badge&color=green" alt="Issues" /></a>
-  <img src="https://img.shields.io/github/last-commit/NukleonSA/SFS1.4.10?style=for-the-badge" alt="Last commit" />
 </p>
 
 > [!WARNING]
