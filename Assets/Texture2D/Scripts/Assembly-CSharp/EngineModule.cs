@@ -202,7 +202,8 @@ public class EngineModule : Module
 		{
 			return;
 		}
-		xAxis *= (float)(part.orientation.x * part.orientation.y);
+		// 用含小数倍率的 SizeX/SizeY，让推力面积与喷口动画跟着缩放；Mx=My=1 时与原版一致。
+		xAxis *= part.orientation.SizeX * part.orientation.SizeY;
 		if (nozzleMove != null)
 		{
 			nozzleMove.SetTargetTime(xAxis);
@@ -213,7 +214,7 @@ public class EngineModule : Module
 		}
 		float num = thrust * throttle.throttle;
 		totalThrust += num;
-		Vector2 vector = Quaternion.Euler(0f, 0f, base.transform.rotation.eulerAngles.z) * new Vector2(0f, part.orientation.y);
+		Vector2 vector = Quaternion.Euler(0f, 0f, base.transform.rotation.eulerAngles.z) * new Vector2(0f, part.orientation.SizeY);
 		Vector2 force = vector * num;
 		Vector2 vector2 = (base.transform.localPosition + part.centerOfMass * part.orientation) * num;
 		rb2d.AddForceAtPosition(force, rb2d.GetRelativePoint(vector2 / num));

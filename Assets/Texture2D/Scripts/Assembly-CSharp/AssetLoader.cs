@@ -129,7 +129,8 @@ public class AssetLoader : MonoBehaviour
 		{
 			LoadPlanet(objectFile.FileName(), objectFile.ReadContent(), ref planetList);
 		}
-		if (planetList.Count > 0 && planetList.ContainsKey(Ref.controller.startAdress))
+		// Ref.controller 只在 Game 场景有效（编辑器里 planetList 非空时会空引用），故加 null 判定。
+		if (planetList.Count > 0 && Ref.controller != null && planetList.ContainsKey(Ref.controller.startAdress))
 		{
 			return planetList;
 		}

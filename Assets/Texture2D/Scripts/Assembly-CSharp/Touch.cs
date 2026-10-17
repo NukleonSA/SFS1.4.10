@@ -82,6 +82,12 @@ public class Touch : MonoBehaviour
 
 	private void StartTouch(int fingerId, int i, Vector2 posPixel)
 	{
+		// PartEditor14: 落在球/面板上的点击交给 UI，其它场景由 InputBlocker 内部过滤。
+		if (PartEditor14.InputBlocker.IsOverUI(posPixel))
+		{
+			touchesInfo[fingerId].touchState = TouchState.NotTouching;
+			return;
+		}
 		touchesInfo[fingerId].touchDownTime = Time.time;
 		touchesInfo[fingerId].lastFingerPosPixel = posPixel;
 		GameObject gameObject = Ref.inputController.PointCastUI(posPixel, Ref.inputController.uIColliders);

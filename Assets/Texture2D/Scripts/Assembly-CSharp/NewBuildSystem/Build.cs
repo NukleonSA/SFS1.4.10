@@ -209,6 +209,8 @@ namespace NewBuildSystem
 
 		private void Start()
 		{
+			// PartEditor14 挂载点（1.4.06 版由 Mono.Cecil 注入同一句）。
+			PartEditor14.Bootstrap.Attach(this);
 			PositionCameraStart();
 			if (Ref.lastScene == Ref.SceneType.Game && World.GetWorldByName().LoadPersistant().mainVesselId != -1)
 			{
